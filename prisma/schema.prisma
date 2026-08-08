@@ -155,6 +155,16 @@ model Setting {
   value String @default("")
 }
 
+/// Uploaded images, stored in the database so they survive redeploys (Railway's
+/// container filesystem is ephemeral — files written to /public/uploads are lost).
+/// Served through /api/media/[id]. Referenced from image fields as "/api/media/<id>".
+model Media {
+  id        String   @id @default(cuid())
+  mime      String
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
 /// Admin-panel user account. role = "ADMIN" | "MANAGER".
 /// ADMIN can manage users; MANAGER can edit site content but not users.
 model User {

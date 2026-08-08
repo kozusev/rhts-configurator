@@ -1,6 +1,13 @@
 import { promises as fs } from "fs";
 import path from "path";
 import sharp from "sharp";
+import { prisma } from "./db";
+
+/** Extract the media id from a "/api/media/<id>" reference (absolute or relative). */
+function mediaId(src: string): string | null {
+  const m = src.match(/\/api\/media\/([^/?#]+)/);
+  return m ? m[1] : null;
+}
 
 const MIME_BY_EXT: Record<string, string> = {
   ".png": "image/png",
@@ -20,6 +27,12 @@ async function loadImageBytes(ref: string): Promise<Buffer | null> {
     if (src.startsWith("data:")) {
       const m = src.match(/^data:[^;]+;base64,([\s\S]*)$/);
       return m ? Buffer.from(m[1], "base64") : null;
+    }
+    // DB-stored upload: read the bytes straight from Postgres (no HTTP round-trip).
+    const id = mediaId(src);
+    if (id) {
+      const media = await prisma.media.findUnique({ where: { id } });
+      return media ? Buffer.from(media.data) : null;
     }
     if (src.startsWith("http://") || src.startsWith("https://")) {
       const res = await fetch(src);

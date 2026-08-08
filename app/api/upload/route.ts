@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
-import { randomUUID } from "crypto";
 import { isAuthenticated } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -33,8 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const ext = ALLOWED[file.type];
-  if (!ext) {
+  if (!ALLOWED[file.type]) {
     return NextResponse.json({ error: "Unsupported file type (use JPG, PNG, WEBP, GIF, AVIF or SVG)" }, { status: 415 });
   }
   if (file.size > MAX_BYTES) {
@@ -42,11 +39,10 @@ export async function POST(req: NextRequest) {
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await fs.mkdir(dir, { recursive: true });
 
-  const filename = `${randomUUID()}.${ext}`;
-  await fs.writeFile(path.join(dir, filename), bytes);
+  // Store in Postgres, not on disk: Railway's filesystem is ephemeral, so files written
+  // to /public/uploads disappear on the next redeploy. DB-backed media survives deploys.
+  const media = await prisma.media.create({ data: { mime: file.type, data: bytes } });
 
-  return NextResponse.json({ url: `/uploads/${filename}` });
+  return NextResponse.json({ url: `/api/media/${media.id}` });
 }
