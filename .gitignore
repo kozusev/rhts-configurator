@@ -1,0 +1,18 @@
+/node_modules
+/.next/
+/out/
+/build
+*.pem
+.DS_Store
+npm-debug.log*
+.env
+.env*.local
+/prisma/*.db
+/prisma/*.db-journal
+/public/uploads/*
+!/public/uploads/.gitkeep
+next-env.d.ts
+
+# Generated offer emails/PDFs (contain customer data) and build cache
+/.mail-preview/
+tsconfig.tsbuildinfo

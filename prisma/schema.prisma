@@ -1,0 +1,165 @@
+// RHTS Configurator — data model
+// Translatable text fields are stored as JSON strings: {"en":"...","es":"...","uk":"..."}
+// Use the t() helper in lib/i18n.ts to read them per-locale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+/// Slides for the main-page hero carousel (reference projects).
+model Project {
+  id          String   @id @default(cuid())
+  title       String   @default("{}") // translatable JSON
+  subtitle    String   @default("{}") // translatable JSON
+  image       String   @default("")
+  link        String   @default("")
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// A milling pack: Core / Power / Beast.
+model Package {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String   @default("{}") // translatable JSON
+  tagline      String   @default("{}") // translatable JSON, short line on the card
+  description  String   @default("{}") // translatable JSON, long, admin-editable
+  spindle      String   @default("")   // e.g. "HSD 8 kW ISO30"
+  power        String   @default("")   // e.g. "8 kW"
+  toolHolder   String   @default("")   // e.g. "ISO30"
+  basePrice    Float    @default(0)
+  currency     String   @default("EUR")
+  image        String   @default("")
+  order        Int      @default(0)
+  published    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Which option groups apply to this package (all groups apply if none linked)
+  optionGroups PackageOptionGroup[]
+}
+
+/// Industrial robot models the customer can pick.
+model Robot {
+  id          String   @id @default(cuid())
+  brand       String   @default("")
+  model       String   @default("")
+  year        Int      @default(0)
+  armReach    Int      @default(0)   // mm
+  payload     Float    @default(0)   // kg
+  controller  String   @default("")
+  price       Float    @default(0)
+  currency    String   @default("EUR")
+  image       String   @default("")
+  description String   @default("{}") // translatable JSON
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// A group of additional options, created by admin (e.g. "Safety", "Automation").
+model OptionGroup {
+  id          String   @id @default(cuid())
+  name        String   @default("{}") // translatable JSON
+  description String   @default("{}") // translatable JSON
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  options     Option[]
+  packages    PackageOptionGroup[]
+}
+
+/// A single option card inside a group.
+model Option {
+  id          String      @id @default(cuid())
+  groupId     String
+  group       OptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name        String      @default("{}") // translatable JSON
+  description String      @default("{}") // translatable JSON
+  price       Float       @default(0)
+  currency    String      @default("EUR")
+  image       String      @default("")
+  order       Int         @default(0)
+  published   Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+/// Join table: package <-> option group.
+model PackageOptionGroup {
+  packageId String
+  groupId   String
+  package   Package     @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  group     OptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([packageId, groupId])
+}
+
+/// A submitted configuration / offer request.
+model Lead {
+  id          String   @id @default(cuid())
+  offerNumber String   @unique
+  firstName   String
+  lastName    String
+  email       String
+  phone       String
+  company     String   @default("")
+  locale      String   @default("en")
+  packageId   String   @default("")
+  robotId     String   @default("")
+  optionIds   String   @default("[]") // JSON array of option ids
+  snapshot    String   @default("{}") // full JSON snapshot of names/prices at submit time
+  subtotal    Float    @default(0)    // total before any discount
+  discount    Float    @default(0)    // discount amount applied (in currency)
+  total       Float    @default(0)    // subtotal - discount
+  currency    String   @default("EUR")
+  status      String   @default("new") // new|contacted|updated|discounted|production|shipped|delivered|installation|closed|canceled|terminated
+  assignedTo  String   @default("")     // email of the user who last worked this lead
+  deadline    DateTime?                  // offer / delivery deadline the manager sets
+  paid        Float    @default(0)        // amount the client has paid so far (down-payments etc.)
+  emailStatus String   @default("pending") // pending | sent | failed | preview
+  createdAt   DateTime @default(now())
+
+  events      LeadEvent[]
+}
+
+/// Activity log + notes for a lead. type = note | status | discount | email | created | modified.
+model LeadEvent {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      String   @default("note")
+  message   String   @default("")
+  author    String   @default("") // user email who made the change
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+/// Key/value settings for the admin (company info, admin email, hero text, etc.).
+model Setting {
+  key   String @id
+  value String @default("")
+}
+
+/// Admin-panel user account. role = "ADMIN" | "MANAGER".
+/// ADMIN can manage users; MANAGER can edit site content but not users.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String   @default("")
+  passwordHash String
+  role         String   @default("MANAGER")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
