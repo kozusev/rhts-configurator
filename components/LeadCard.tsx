@@ -46,7 +46,7 @@ export default function LeadCard({ lead: l }: { lead: LeadRow }) {
       {/* Header: id + status + chips, and total/owner on the right */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Link href={`/admin/leads/${l.id}`} className="font-mono text-brand-300 hover:text-brand-200">{l.offerNumber}</Link>
+          <Link href={`/admin/leads/${l.id}`} className="font-mono text-base font-bold text-brand-300 hover:text-brand-200">{l.offerNumber}</Link>
           <StatusBadge status={l.status} />
           {l.deadline && (
             <span className={`chip ${overdue ? "border-red-500/40 text-red-300" : "border-sky-500/40 text-sky-300"}`}>
@@ -64,22 +64,27 @@ export default function LeadCard({ lead: l }: { lead: LeadRow }) {
       </div>
 
       {/* Customer */}
-      <div className="mt-2">
-        <div className="font-bold">{l.firstName} {l.lastName}{l.company && <span className="text-sm font-normal text-slate-400"> · {l.company}</span>}</div>
+      <div className="mt-0.5">
+        <div className="font-bold">{l.firstName} {l.lastName}</div>
+        {l.company && <div className="text-sm text-slate-400">{l.company}</div>}
         <div className="text-xs text-slate-500">{l.email}{l.phone ? ` · ${l.phone}` : ""}</div>
       </div>
 
-      {/* Pack + robot */}
+      {/* Pack + robot — styled like the option-group lines */}
       <div className="mt-3 divide-y divide-white/5 border-t border-white/10 pt-3 text-sm">
         <div className="flex items-start justify-between gap-3 py-1.5">
-          <div><span className="font-medium">Milling pack — {snap?.package?.name || "—"}</span>
+          <div>
+            <span className="font-semibold text-brand-300">Milling pack:</span> <span className="text-slate-300">{snap?.package?.name || "—"}</span>
             {(snap?.package?.spindle || snap?.package?.toolHolder) && <div className="text-xs text-slate-400">{snap?.package?.spindle} {snap?.package?.toolHolder ? "· " + snap.package.toolHolder : ""}</div>}
           </div>
           <div className="whitespace-nowrap font-semibold">{money(snap?.package?.price || 0, l.currency)}</div>
         </div>
         {snap?.robot && (
           <div className="flex items-start justify-between gap-3 py-1.5">
-            <div><span className="font-medium">Robot — {snap.robot.label}</span><div className="text-xs text-slate-400">{snap.robot.specs}</div></div>
+            <div>
+              <span className="font-semibold text-brand-300">Robot:</span> <span className="text-slate-300">{snap.robot.label}</span>
+              <div className="text-xs text-slate-400">{snap.robot.specs}</div>
+            </div>
             <div className="whitespace-nowrap font-semibold">{money(snap.robot.price, l.currency)}</div>
           </div>
         )}
