@@ -31,8 +31,13 @@ async function main() {
   await prisma.optionGroup.createMany({ data: reviveDates(d.optionGroups), skipDuplicates: true });
   await prisma.option.createMany({ data: reviveDates(d.options), skipDuplicates: true });
   await prisma.packageOptionGroup.createMany({ data: reviveDates(d.packageOptionGroups), skipDuplicates: true });
-  await prisma.lead.createMany({ data: reviveDates(d.leads), skipDuplicates: true });
-  await prisma.leadEvent.createMany({ data: reviveDates(d.leadEvents), skipDuplicates: true });
+
+  // Test leads are intentionally NOT imported — production starts with a clean lead list.
+  // To also import the exported leads, set IMPORT_LEADS=1 when running this script.
+  if (process.env.IMPORT_LEADS === "1") {
+    await prisma.lead.createMany({ data: reviveDates(d.leads), skipDuplicates: true });
+    await prisma.leadEvent.createMany({ data: reviveDates(d.leadEvents), skipDuplicates: true });
+  }
 
   const counts = {
     settings: await prisma.setting.count(),

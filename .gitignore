@@ -7,7 +7,9 @@
 npm-debug.log*
 .env
 .env*.local
-# SQLite database IS committed (the app's stored data); transient journal/wal files are not
+# Local database is NEVER committed — production uses Postgres (DATABASE_URL).
+# This is what stops local data from overwriting the live database on deploy.
+/prisma/*.db
 /prisma/*.db-journal
 /prisma/*.db-wal
 /prisma/*.db-shm
