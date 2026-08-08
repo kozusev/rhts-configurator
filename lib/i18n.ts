@@ -1,11 +1,10 @@
-export const locales = ["en", "es", "uk"] as const;
+export const locales = ["en", "es"] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "en";
 
 export const localeNames: Record<Locale, string> = {
   en: "English",
   es: "Español",
-  uk: "Українська",
 };
 
 export function isLocale(x: string): x is Locale {
@@ -30,13 +29,14 @@ export function t(field: string | null | undefined, locale: Locale): string {
   return "";
 }
 
-/** Build a translatable JSON string from parts (used by admin/seed). */
-export function ml(parts: Partial<Record<Locale, string>>): string {
+/** Build a translatable JSON string from parts (used by admin/seed). Extra locale keys are allowed. */
+export function ml(parts: Record<string, string>): string {
   return JSON.stringify(parts);
 }
 
 // ---- UI dictionary (static interface strings) ----
-type Dict = Record<string, Record<Locale, string>>;
+// Values may still carry a leftover "uk" key; only active locales are read.
+type Dict = Record<string, Record<string, string>>;
 
 const dict: Dict = {
   brand: { en: "RHTS Milling Cells", es: "Células de Fresado RHTS", uk: "Фрезерні комірки RHTS" },

@@ -12,7 +12,7 @@ export type OfferSnapshot = {
   locale: Locale;
   currency: string;
   customer: { firstName: string; lastName: string; email: string; phone: string; company: string; note: string };
-  package: { name: string; price: number; spindle: string; toolHolder: string; image?: string };
+  package: { name: string; price: number; spindle: string; toolHolder: string; image?: string; description?: string };
   robot: { label: string; price: number; specs: string; image?: string } | null;
   options: OfferLineItem[];
   subtotal: number; // sum of pack + robot + options, before discount
@@ -80,7 +80,7 @@ export async function buildOfferSnapshot(input: OfferInput, offerNumber: string)
       company: input.company || "",
       note: input.note || "",
     },
-    package: { name: t(pkg.name, locale), price: pkg.basePrice, spindle: pkg.spindle, toolHolder: pkg.toolHolder, image: pkg.image || "" },
+    package: { name: t(pkg.name, locale), price: pkg.basePrice, spindle: pkg.spindle, toolHolder: pkg.toolHolder, image: pkg.image || "", description: t(pkg.description, locale) },
     robot: robot
       ? {
           label: `${robot.brand} ${robot.model}`,

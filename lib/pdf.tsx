@@ -27,6 +27,7 @@ const styles = StyleSheet.create({
   cellLabel: { flex: 1, paddingRight: 8 },
   cellName: { fontFamily: "Helvetica-Bold" },
   cellSub: { fontSize: 8, color: GRAY, marginTop: 2 },
+  packDesc: { marginTop: 4, lineHeight: 1.4, color: "#334155" },
   cellPrice: { width: 90, textAlign: "right", fontFamily: "Helvetica-Bold" },
   subRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3, paddingLeft: 44 },
   subLabel: { color: GRAY },
@@ -111,6 +112,7 @@ function OfferDoc({
               <View style={styles.cellLabel}>
                 <Text style={styles.cellName}>Milling pack — {s.package.name}</Text>
                 <Text style={styles.cellSub}>{s.package.spindle} · {s.package.toolHolder}</Text>
+                {s.package.description ? <Text style={[styles.cellSub, styles.packDesc]}>{s.package.description}</Text> : null}
               </View>
               <Text style={styles.cellPrice}>{money(s.package.price, s.currency, s.locale)}</Text>
             </View>

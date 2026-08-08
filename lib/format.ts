@@ -1,9 +1,8 @@
 import type { Locale } from "./i18n";
 
-const localeMap: Record<Locale, string> = {
+const localeMap: Record<string, string> = {
   en: "en-GB",
   es: "es-ES",
-  uk: "uk-UA",
 };
 
 export function money(amount: number, currency = "EUR", locale: Locale = "en"): string {

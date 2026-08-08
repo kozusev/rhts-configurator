@@ -27,19 +27,6 @@ const copy: Record<Locale, { eyebrow: string; title: string; sub: string; featur
     apps: "Fresado · Aditiva · Corte · Soldadura · Piedra · Pulido",
     cta: "Descubre ENCY Robot",
   },
-  uk: {
-    eyebrow: "CAM програма",
-    title: "Програмування з ENCY Robot",
-    sub: "Повне рішення для офлайн-програмування роботів — найкраще ПЗ для розрахунку траєкторій, керування кінематикою та симуляції.",
-    features: [
-      "Генерація траєкторій з урахуванням кінематики",
-      "Керування сингулярностями, колізіями та зонами досяжності",
-      "Повна симуляція комірки та перевірка NC-коду",
-      "Підтримка зовнішніх осей і цифрових двійників",
-    ],
-    apps: "Фрезерування · Адитивне · Різання · Зварювання · Камінь · Полірування",
-    cta: "Дізнатися про ENCY Robot",
-  },
 };
 
 export default function CamBlock({ locale }: { locale: Locale }) {
