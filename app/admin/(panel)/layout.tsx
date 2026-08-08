@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { logoutAction } from "../auth-actions";
+import AdminMobileNav from "@/components/AdminMobileNav";
 
 const nav = [
   { href: "/admin", label: "Dashboard" },
@@ -43,15 +44,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <button className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-400 hover:bg-white/5 hover:text-white">Sign out</button>
         </form>
       </aside>
-      <div className="flex-1">
-        <div className="border-b border-white/10 bg-ink-800/50 p-3 md:hidden">
-          <nav className="flex gap-3 overflow-x-auto text-xs">
-            {items.map((n) => (
-              <Link key={n.href} href={n.href} className="whitespace-nowrap rounded-lg bg-white/5 px-3 py-1.5">{n.label}</Link>
-            ))}
-          </nav>
-        </div>
-        <main className="p-6 md:p-10">{children}</main>
+      <div className="min-w-0 flex-1">
+        <AdminMobileNav items={items} user={{ name: user.name, email: user.email, role: user.role }} logoutAction={logoutAction} />
+        <main className="p-4 sm:p-6 md:p-10">{children}</main>
       </div>
     </div>
   );
