@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { money } from "@/lib/format";
 import LeadCard from "@/components/LeadCard";
-import { IDLE_STATUSES } from "@/lib/leadStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -38,13 +37,14 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
 
   const stats = [
     { label: "Total", set: leads, accent: "text-brand-300" },
-    { label: "Idle", set: inBucket(IDLE_STATUSES), accent: "text-emerald-300" },
+    { label: "New", set: inBucket(["new"]), accent: "text-emerald-300" },
+    { label: "Idle", set: inBucket(["contacted", "updated", "discounted"]), accent: "text-yellow-300" },
+    { label: "Closed", set: inBucket(["closed"]), accent: "text-amber-300" },
     { label: "Production", set: inBucket(["production"]), accent: "text-violet-300" },
     { label: "Shipped / Delivered", set: inBucket(["shipped", "delivered"]), accent: "text-cyan-300" },
     { label: "Installation", set: inBucket(["installation"]), accent: "text-indigo-300" },
-    { label: "Closed", set: inBucket(["closed"]), accent: "text-amber-300" },
-    { label: "Canceled", set: inBucket(["canceled"]), accent: "text-red-300" },
     { label: "Finished", set: inBucket(["finished", "terminated"]), accent: "text-slate-300" },
+    { label: "Canceled", set: inBucket(["canceled"]), accent: "text-red-300" },
   ].map((s) => ({ label: s.label, accent: s.accent, count: s.set.length, sum: sum(s.set) }));
 
   return (
@@ -72,13 +72,13 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
         })}
       </div>
 
-      {/* Stat cards — compact, 3 across */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      {/* Stat cards — compact: 3 across on mobile, all on one row on desktop */}
+      <div className="grid grid-cols-3 gap-2 lg:grid-cols-9">
         {stats.map((s) => (
-          <div key={s.label} className="card p-2.5 sm:p-3">
-            <div className="truncate text-[11px] leading-tight text-slate-400 sm:text-xs">{s.label}</div>
-            <div className={`text-xl font-bold sm:text-2xl ${s.accent}`}>{s.count}</div>
-            <div className="truncate text-[11px] font-semibold text-slate-300 sm:text-xs">{money(s.sum, leads[0]?.currency || "EUR")}</div>
+          <div key={s.label} className="card p-2 text-center lg:p-2.5">
+            <div className="truncate text-[10px] leading-tight text-slate-400 sm:text-[11px]">{s.label}</div>
+            <div className={`text-lg font-bold sm:text-xl ${s.accent}`}>{s.count}</div>
+            <div className="truncate text-[10px] font-semibold text-slate-300 sm:text-[11px]">{money(s.sum, leads[0]?.currency || "EUR")}</div>
           </div>
         ))}
       </div>
