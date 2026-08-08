@@ -8,8 +8,8 @@ import { prisma } from "@/lib/db";
 
 // Revive ISO date strings back into Date objects for Prisma.
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
-function reviveDates<T>(rows: T[]): T[] {
-  return rows.map((row) => {
+function reviveDates(rows: any[]): any[] {
+  return (rows || []).map((row) => {
     const o: any = { ...row };
     for (const k of Object.keys(o)) {
       if (typeof o[k] === "string" && ISO.test(o[k])) o[k] = new Date(o[k]);

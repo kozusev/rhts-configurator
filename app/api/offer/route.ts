@@ -42,9 +42,9 @@ export async function POST(req: NextRequest) {
     const offerNumber = await nextOfferNumber(prefix);
     const snapshot = await buildOfferSnapshot(input, offerNumber);
     const pdf = await renderOfferPdf(snapshot);
-    const mail = await sendOfferEmails(snapshot, pdf);
 
-    await prisma.lead.create({
+    // Save the lead FIRST so it's never lost, even if email delivery stalls or fails.
+    const lead = await prisma.lead.create({
       data: {
         offerNumber,
         firstName: input.firstName,
@@ -61,11 +61,22 @@ export async function POST(req: NextRequest) {
         discount: 0,
         total: snapshot.total,
         currency: snapshot.currency,
-        emailStatus: mail.mode,
+        emailStatus: "pending",
       },
     });
 
-    return NextResponse.json({ offerNumber, pdfUrl: `/api/offer/${offerNumber}/pdf`, emailStatus: mail.mode });
+    // Attempt delivery — failures/timeouts must not break the offer response.
+    let emailStatus = "pending";
+    try {
+      const mail = await sendOfferEmails(snapshot, pdf);
+      emailStatus = mail.mode;
+    } catch (e) {
+      console.error("[api/offer] email error", e);
+      emailStatus = "failed";
+    }
+    await prisma.lead.update({ where: { id: lead.id }, data: { emailStatus } });
+
+    return NextResponse.json({ offerNumber, pdfUrl: `/api/offer/${offerNumber}/pdf`, emailStatus });
   } catch (e) {
     console.error("[api/offer] error", e);
     return NextResponse.json({ error: "Could not generate offer" }, { status: 500 });

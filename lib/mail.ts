@@ -136,6 +136,26 @@ function buildInlineAttachments(imgs: EmailImages) {
   return { attachments, toCid };
 }
 
+/** Send one email via Resend's HTTPS API (port 443 — not blocked by cloud hosts), with a hard timeout. */
+async function resendSend(apiKey: string, payload: Record<string, unknown>): Promise<void> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`Resend API ${res.status}: ${txt.slice(0, 300)}`);
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function sendOfferEmails(s: OfferSnapshot, pdf: Buffer): Promise<SendResult> {
   const adminEmail = s.company.admin_email || "";
   const from = process.env.SMTP_FROM || s.company.company_email || "no-reply@rhts.local";
@@ -162,19 +182,56 @@ export async function sendOfferEmails(s: OfferSnapshot, pdf: Buffer): Promise<Se
     return { ok: true, mode: "preview" };
   }
 
+  const pdfB64 = pdf.toString("base64");
+
+  // Preferred path: Resend HTTPS API (works on cloud hosts that block SMTP ports).
+  const resendKey =
+    process.env.RESEND_API_KEY || (/resend\.com$/i.test(host) ? process.env.SMTP_PASS || "" : "");
+  if (resendKey) {
+    try {
+      // Embed images as data URIs; the attached PDF also carries everything.
+      const asData = (src: string | null) => src;
+      const attachments = [{ filename: pdfAttachment.filename, content: pdfB64 }];
+      await resendSend(resendKey, {
+        from,
+        to: [s.customer.email],
+        bcc: adminEmail ? [adminEmail] : undefined,
+        subject: `Your RHTS offer ${s.offerNumber}`,
+        html: offerEmailHtml(s, imgs, asData),
+        attachments,
+      });
+      if (adminEmail) {
+        await resendSend(resendKey, {
+          from,
+          to: [adminEmail],
+          subject: `New lead — ${s.customer.firstName} ${s.customer.lastName} (${s.offerNumber})`,
+          html: adminNotifyHtml(s, imgs, asData),
+          attachments,
+        });
+      }
+      return { ok: true, mode: "sent" };
+    } catch (e) {
+      console.error("[mail:resend] send failed", e);
+      return { ok: false, mode: "failed", detail: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  // Fallback: SMTP via nodemailer, with timeouts so a stalled connection fails fast (never hangs the request).
   try {
     const transporter = nodemailer.createTransport({
       host,
       port: Number(process.env.SMTP_PORT || 587),
       secure: process.env.SMTP_SECURE === "true",
       auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
     });
 
     // Inline images via CID so they render in Gmail/Outlook (data URIs are stripped there).
     const { attachments: inline, toCid } = buildInlineAttachments(imgs);
     const inlineAttachments = inline.map((a) => ({ ...a, cid: a.cid }));
 
-    // Customer email (admin in BCC to receive a copy)
     await transporter.sendMail({
       from,
       to: s.customer.email,
@@ -184,7 +241,6 @@ export async function sendOfferEmails(s: OfferSnapshot, pdf: Buffer): Promise<Se
       attachments: [pdfAttachment, ...inlineAttachments],
     });
 
-    // Separate admin notification with lead details
     if (adminEmail) {
       await transporter.sendMail({
         from,
