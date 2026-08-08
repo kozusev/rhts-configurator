@@ -29,6 +29,7 @@ type Labels = Record<string, string>;
 export type ConfiguratorInitial = {
   robotId?: string;
   optionIds?: string[];
+  optionQuantities?: Record<string, number>;
   customer?: Partial<{ firstName: string; lastName: string; email: string; phone: string; company: string; note: string; deliveryAddress: string; regNumber: string }>;
 };
 
@@ -62,7 +63,12 @@ export default function Configurator({
   // Customer form shows on the public site and in admin "create lead" mode; hidden in "modify offer" mode.
   const customerVisible = showCustomerForm ?? !adminMode;
   const [robotId, setRobotId] = useState<string>(initial?.robotId || "");
-  const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set(initial?.optionIds || []));
+  // Quantity per option id. An option is "selected" when its quantity is >= 1.
+  const [quantities, setQuantities] = useState<Record<string, number>>(() => {
+    const q: Record<string, number> = {};
+    for (const id of initial?.optionIds || []) q[id] = Math.max(1, Math.round(initial?.optionQuantities?.[id] || 1));
+    return q;
+  });
   const [form, setForm] = useState({
     firstName: initial?.customer?.firstName || "",
     lastName: initial?.customer?.lastName || "",
@@ -90,20 +96,32 @@ export default function Configurator({
   const currency = activePkg.currency || "EUR";
   const robot = robots.find((r) => r.id === robotId) || null;
 
+  const qtyOf = (id: string) => quantities[id] || 0;
   const optionList = useMemo(
-    () => visibleGroups.flatMap((g) => g.options).filter((o) => selectedOptions.has(o.id)),
-    [visibleGroups, selectedOptions]
+    () => visibleGroups.flatMap((g) => g.options).filter((o) => qtyOf(o.id) > 0),
+    [visibleGroups, quantities]
   );
 
   const total = useMemo(() => {
-    const opt = optionList.reduce((s, o) => s + o.price, 0);
+    const opt = optionList.reduce((s, o) => s + o.price * (quantities[o.id] || 1), 0);
     return activePkg.basePrice + (robot?.price || 0) + opt;
-  }, [activePkg.basePrice, robot, optionList]);
+  }, [activePkg.basePrice, robot, optionList, quantities]);
 
   function toggleOption(id: string) {
-    setSelectedOptions((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+    setQuantities((prev) => {
+      const next = { ...prev };
+      if (next[id] > 0) delete next[id];
+      else next[id] = 1;
+      return next;
+    });
+  }
+
+  function setOptionQty(id: string, qty: number) {
+    setQuantities((prev) => {
+      const next = { ...prev };
+      const n = Math.max(0, Math.round(qty));
+      if (n <= 0) delete next[id];
+      else next[id] = n;
       return next;
     });
   }
@@ -115,7 +133,7 @@ export default function Configurator({
     const allowed = new Set(
       groups.filter((g) => link.length === 0 || link.includes(g.id)).flatMap((g) => g.options.map((o) => o.id))
     );
-    setSelectedOptions((prev) => new Set(Array.from(prev).filter((oid) => allowed.has(oid))));
+    setQuantities((prev) => Object.fromEntries(Object.entries(prev).filter(([oid]) => allowed.has(oid))));
   }
 
   async function submit(e?: React.FormEvent) {
@@ -138,7 +156,8 @@ export default function Configurator({
           locale,
           packageId: activePkg.id,
           robotId,
-          optionIds: Array.from(selectedOptions),
+          optionIds: optionList.map((o) => o.id),
+          optionQuantities: Object.fromEntries(optionList.map((o) => [o.id, quantities[o.id] || 1])),
           ...form,
         }),
       });
@@ -257,7 +276,8 @@ export default function Configurator({
                   </div>
                   <CardCarousel>
                     {g.options.map((o) => {
-                      const active = selectedOptions.has(o.id);
+                      const qty = qtyOf(o.id);
+                      const active = qty > 0;
                       return (
                         <div key={o.id} className={`card flex h-full flex-col overflow-hidden p-4 transition ${active ? "border-brand-400/70 ring-2 ring-brand-400/40" : ""}`}>
                           {o.image && (
@@ -270,13 +290,47 @@ export default function Configurator({
                             <h4 className="font-semibold leading-tight">{o.name}</h4>
                             {o.description && <p className="mt-1 text-xs text-slate-400">{o.description}</p>}
                             <div className="mt-3 flex items-center justify-between pt-2">
-                              <span className="whitespace-nowrap text-sm font-bold text-brand-300">+{money(o.price, o.currency, locale)}</span>
-                              <button
-                                onClick={() => toggleOption(o.id)}
-                                className={`btn !px-3 !py-1.5 text-xs ${active ? "btn-primary" : "btn-ghost"}`}
-                              >
-                                {active ? `✓ ${labels.added}` : `+ ${labels.add}`}
-                              </button>
+                              <span className="whitespace-nowrap text-sm font-bold text-brand-300">
+                                +{money(o.price, o.currency, locale)}
+                                {active && qty > 1 && (
+                                  <span className="ml-1 text-slate-400">× {qty} = {money(o.price * qty, o.currency, locale)}</span>
+                                )}
+                              </span>
+                              {active ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    aria-label="Decrease quantity"
+                                    onClick={() => setOptionQty(o.id, qty - 1)}
+                                    className="btn btn-ghost !h-7 !w-7 !px-0 !py-0 text-base leading-none"
+                                  >
+                                    −
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={qty}
+                                    onChange={(e) => setOptionQty(o.id, parseInt(e.target.value || "0", 10))}
+                                    className="field !w-12 !px-1 !py-1 text-center text-sm"
+                                  />
+                                  <button
+                                    type="button"
+                                    aria-label="Increase quantity"
+                                    onClick={() => setOptionQty(o.id, qty + 1)}
+                                    className="btn btn-primary !h-7 !w-7 !px-0 !py-0 text-base leading-none"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleOption(o.id)}
+                                  className="btn btn-ghost !px-3 !py-1.5 text-xs"
+                                >
+                                  + {labels.add}
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

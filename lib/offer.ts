@@ -2,7 +2,7 @@ import { prisma } from "./db";
 import { t, type Locale } from "./i18n";
 import { getSettings } from "./settings";
 
-export type OfferLineItem = { label: string; sub?: string; image?: string; price: number; group?: string };
+export type OfferLineItem = { id?: string; label: string; sub?: string; image?: string; qty: number; unitPrice: number; price: number; group?: string };
 
 export type OfferDiscount = { label: string; amount: number };
 
@@ -27,6 +27,7 @@ export type OfferInput = {
   packageId: string;
   robotId: string;
   optionIds: string[];
+  optionQuantities?: Record<string, number>;
   firstName: string;
   lastName: string;
   email: string;
@@ -59,11 +60,15 @@ export async function buildOfferSnapshot(input: OfferInput, offerNumber: string)
 
   const currency = pkg.currency || "EUR";
 
+  const quantities = input.optionQuantities || {};
   const optionItems: OfferLineItem[] = options.map((o) => {
     const label = t(o.name, locale);
     // ENCY licence options ship without their own photo — fall back to the brand image.
     const image = o.image || (/ency/i.test(label) ? "/ENCY.png" : "");
-    return { label, sub: t(o.description, locale), image, price: o.price, group: t(o.group.name, locale) };
+    // Quantity: at least 1, whole number. `price` is the extended (line) price so all
+    // downstream totals keep summing `price` unchanged; `unitPrice`/`qty` are for display.
+    const qty = Math.max(1, Math.round(quantities[o.id] || 1));
+    return { id: o.id, label, sub: t(o.description, locale), image, qty, unitPrice: o.price, price: o.price * qty, group: t(o.group.name, locale) };
   });
   const optionsTotal = optionItems.reduce((s, o) => s + o.price, 0);
   const subtotal = pkg.basePrice + (robot?.price || 0) + optionsTotal;

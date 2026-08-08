@@ -31,9 +31,16 @@ export default async function EditOfferPage({ params }: { params: { id: string }
   let snap: any = {};
   try { snap = JSON.parse(lead.snapshot); } catch {}
 
+  // Restore per-option quantities saved in the snapshot (older offers default to 1).
+  const optionQuantities: Record<string, number> = {};
+  for (const o of (snap?.options || [])) {
+    if (o?.id) optionQuantities[o.id] = Math.max(1, Math.round(o.qty || 1));
+  }
+
   const initial: ConfiguratorInitial = {
     robotId: lead.robotId || "",
     optionIds,
+    optionQuantities,
     customer: {
       firstName: lead.firstName,
       lastName: lead.lastName,

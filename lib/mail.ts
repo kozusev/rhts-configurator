@@ -60,7 +60,9 @@ function offerEmailHtml(
   rows.push(lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)));
   if (s.robot) rows.push(lineRow(img(imgs.robot), `Robot — ${s.robot.label}`, s.robot.specs, money(s.robot.price, s.currency, s.locale)));
   s.options.forEach((o, i) => {
-    rows.push(lineRow(img(imgs.options[i]), o.label, o.sub || "", money(o.price, s.currency, s.locale)));
+    const name = o.qty > 1 ? `${o.label} × ${o.qty}` : o.label;
+    const sub = o.qty > 1 ? [o.sub, `${o.qty} × ${money(o.unitPrice, s.currency, s.locale)}`].filter(Boolean).join(" · ") : o.sub || "";
+    rows.push(lineRow(img(imgs.options[i]), name, sub, money(o.price, s.currency, s.locale)));
   });
 
   const hasDiscount = !!(s.discount && s.discount.amount > 0);
@@ -104,7 +106,7 @@ function adminNotifyHtml(s: OfferSnapshot, imgs: EmailImages, img: (src: string 
   const rows = [
     lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)),
     ...(s.robot ? [lineRow(img(imgs.robot), `Robot — ${s.robot.label}`, s.robot.specs, money(s.robot.price, s.currency, s.locale))] : []),
-    ...s.options.map((o, i) => lineRow(img(imgs.options[i]), o.label, o.sub || "", money(o.price, s.currency, s.locale))),
+    ...s.options.map((o, i) => lineRow(img(imgs.options[i]), o.qty > 1 ? `${o.label} × ${o.qty}` : o.label, o.sub || "", money(o.price, s.currency, s.locale))),
   ].join("");
 
   const hasDiscount = !!(s.discount && s.discount.amount > 0);

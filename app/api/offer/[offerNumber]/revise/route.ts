@@ -12,6 +12,7 @@ const schema = z.object({
   packageId: z.string().min(1),
   robotId: z.string().min(1, "no robot"),
   optionIds: z.array(z.string()).default([]),
+  optionQuantities: z.record(z.string(), z.number()).optional().default({}),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   email: z.string().email(),

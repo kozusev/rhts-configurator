@@ -134,8 +134,9 @@ function OfferDoc({
               <View style={styles.row} key={i} wrap={false}>
                 <Thumb src={optionImages[i]} />
                 <View style={styles.cellLabel}>
-                  <Text style={styles.cellName}>{o.label}</Text>
+                  <Text style={styles.cellName}>{o.label}{o.qty > 1 ? ` × ${o.qty}` : ""}</Text>
                   {o.sub ? <Text style={styles.cellSub}>{o.sub}</Text> : null}
+                  {o.qty > 1 ? <Text style={styles.cellSub}>{o.qty} × {money(o.unitPrice, s.currency, s.locale)}</Text> : null}
                 </View>
                 <Text style={styles.cellPrice}>{money(o.price, s.currency, s.locale)}</Text>
               </View>
