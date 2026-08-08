@@ -104,9 +104,24 @@ export async function buildOfferSnapshot(input: OfferInput, offerNumber: string)
 
 export async function nextOfferNumber(prefix: string): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.lead.count();
-  const seq = String(count + 1).padStart(4, "0");
   // Strip any trailing dash from the prefix so we never get "RHTS--2026-0001".
   const p = prefix.replace(/-+$/, "");
-  return `${p}-${year}-${seq}`;
+  const base = `${p}-${year}-`;
+
+  // Derive the next sequence from the HIGHEST existing offer for this prefix+year,
+  // never from the lead count — otherwise deleting a lead would reuse a number and
+  // hit the unique constraint on `offerNumber` (P2002). Sequences are zero-padded
+  // to 4 digits so lexical desc order matches numeric order.
+  const last = await prisma.lead.findFirst({
+    where: { offerNumber: { startsWith: base } },
+    orderBy: { offerNumber: "desc" },
+    select: { offerNumber: true },
+  });
+
+  let seq = 1;
+  if (last) {
+    const m = last.offerNumber.match(/(\d+)$/);
+    if (m) seq = parseInt(m[1], 10) + 1;
+  }
+  return `${base}${String(seq).padStart(4, "0")}`;
 }

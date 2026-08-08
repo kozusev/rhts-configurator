@@ -46,36 +46,50 @@ export async function POST(req: NextRequest) {
 
   try {
     const prefix = await getSetting("offer_prefix", "RHTS");
-    const offerNumber = await nextOfferNumber(prefix);
+    let offerNumber = await nextOfferNumber(prefix);
     const snapshot = await buildOfferSnapshot(input, offerNumber);
 
     // Save the lead FIRST so it's never lost. Admin-created leads (createdBy set) are
     // auto-assigned to their creator and NOT emailed — the offer is sent manually from
     // the lead page. Public website leads (createdBy empty) get the instant offer emailed.
-    const lead = await prisma.lead.create({
-      data: {
-        offerNumber,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        email: input.email,
-        phone: input.phone,
-        company: input.company || "",
-        deliveryAddress: input.deliveryAddress || "",
-        regNumber: input.regNumber || "",
-        createdBy,
-        assignedTo: createdBy, // manager/agent-created leads stay assigned to their creator
-        locale: input.locale,
-        packageId: input.packageId,
-        robotId: input.robotId,
-        optionIds: JSON.stringify(input.optionIds),
-        snapshot: JSON.stringify(snapshot),
-        subtotal: snapshot.subtotal,
-        discount: 0,
-        total: snapshot.total,
-        currency: snapshot.currency,
-        emailStatus: "pending",
-      },
-    });
+    // Retry on the rare race where two submissions pick the same offer number (P2002).
+    let lead;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        lead = await prisma.lead.create({
+          data: {
+            offerNumber,
+            firstName: input.firstName,
+            lastName: input.lastName,
+            email: input.email,
+            phone: input.phone,
+            company: input.company || "",
+            deliveryAddress: input.deliveryAddress || "",
+            regNumber: input.regNumber || "",
+            createdBy,
+            assignedTo: createdBy, // manager/agent-created leads stay assigned to their creator
+            locale: input.locale,
+            packageId: input.packageId,
+            robotId: input.robotId,
+            optionIds: JSON.stringify(input.optionIds),
+            snapshot: JSON.stringify(snapshot),
+            subtotal: snapshot.subtotal,
+            discount: 0,
+            total: snapshot.total,
+            currency: snapshot.currency,
+            emailStatus: "pending",
+          },
+        });
+        break;
+      } catch (e: any) {
+        if (e?.code === "P2002" && attempt < 5) {
+          offerNumber = await nextOfferNumber(prefix);
+          snapshot.offerNumber = offerNumber;
+          continue;
+        }
+        throw e;
+      }
+    }
 
     let emailStatus = "pending";
     if (!createdBy) {
