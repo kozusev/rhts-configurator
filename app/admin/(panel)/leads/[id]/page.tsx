@@ -6,7 +6,8 @@ import { money } from "@/lib/format";
 import { LEAD_STATUSES } from "@/lib/leadStatus";
 import StatusBadge from "@/components/StatusBadge";
 import DeleteLeadButton from "@/components/DeleteLeadButton";
-import { setLeadStatus, addLeadNote, applyLeadDiscount, resendOffer, setLeadDeadline, recordPayment, updateLeadCustomer } from "../../../lead-actions";
+import EditCustomerModal from "@/components/EditCustomerModal";
+import { setLeadStatus, addLeadNote, applyLeadDiscount, resendOffer, setLeadDeadline, recordPayment } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -103,22 +104,32 @@ export default async function LeadDetailPage({
           <div className="card p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-bold">Customer</h2>
-              <span className="text-xs text-slate-500">
-                {lead.createdBy ? <>👤 Created by {lead.createdBy.split("@")[0]}</> : <>🌐 From website</>} · {fmt(lead.createdAt)} · {lead.locale.toUpperCase()}
-              </span>
+              <EditCustomerModal
+                leadId={lead.id}
+                customer={{
+                  firstName: lead.firstName,
+                  lastName: lead.lastName,
+                  email: lead.email,
+                  phone: lead.phone,
+                  company: lead.company,
+                  regNumber: lead.regNumber,
+                  deliveryAddress: lead.deliveryAddress,
+                  note: snap?.customer?.note || "",
+                }}
+              />
             </div>
-            <form action={updateLeadCustomer} className="grid gap-3 sm:grid-cols-2">
-              <input type="hidden" name="id" value={lead.id} />
-              <div><label className="label">First name *</label><input name="firstName" defaultValue={lead.firstName} className="field" /></div>
-              <div><label className="label">Last name *</label><input name="lastName" defaultValue={lead.lastName} className="field" /></div>
-              <div><label className="label">Email *</label><input name="email" type="email" defaultValue={lead.email} className="field" /></div>
-              <div><label className="label">Phone</label><input name="phone" defaultValue={lead.phone} className="field" /></div>
-              <div><label className="label">Company</label><input name="company" defaultValue={lead.company} className="field" /></div>
-              <div><label className="label">Reg. / VAT number</label><input name="regNumber" defaultValue={lead.regNumber} className="field" /></div>
-              <div className="sm:col-span-2"><label className="label">Delivery address</label><input name="deliveryAddress" defaultValue={lead.deliveryAddress} className="field" /></div>
-              <div className="sm:col-span-2"><label className="label">Note</label><textarea name="note" rows={2} defaultValue={snap?.customer?.note || ""} className="field text-sm" /></div>
-              <div className="sm:col-span-2"><button className="btn-ghost !py-1.5 text-sm">Save customer details</button></div>
-            </form>
+            <div className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+              <div><span className="text-slate-500">Name:</span> <span className="font-medium">{lead.firstName} {lead.lastName}</span></div>
+              <div><span className="text-slate-500">Company:</span> {lead.company || "—"}</div>
+              <div className="truncate"><span className="text-slate-500">Email:</span> {lead.email}</div>
+              <div><span className="text-slate-500">Phone:</span> {lead.phone || "—"}</div>
+              <div><span className="text-slate-500">Reg./VAT:</span> {lead.regNumber || "—"}</div>
+              <div><span className="text-slate-500">Delivery:</span> {lead.deliveryAddress || "—"}</div>
+              {snap?.customer?.note ? <div className="sm:col-span-2"><span className="text-slate-500">Note:</span> {snap.customer.note}</div> : null}
+            </div>
+            <div className="mt-3 border-t border-white/10 pt-2 text-xs text-slate-500">
+              {lead.createdBy ? <>👤 Created by {lead.createdBy.split("@")[0]}</> : <>🌐 From website</>} · {fmt(lead.createdAt)} · {lead.locale.toUpperCase()}
+            </div>
           </div>
 
           <div className="card p-5">
