@@ -50,7 +50,12 @@ function lineRow(imgSrc: string | null, name: string, sub: string, price: string
 }
 
 /** `img` maps a resolved data URI to the value used in the HTML (data URI or cid:). */
-function offerEmailHtml(s: OfferSnapshot, imgs: EmailImages, img: (src: string | null) => string | null): string {
+function offerEmailHtml(
+  s: OfferSnapshot,
+  imgs: EmailImages,
+  img: (src: string | null) => string | null,
+  opts?: { discountIntro?: boolean }
+): string {
   const rows: string[] = [];
   rows.push(lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)));
   if (s.robot) rows.push(lineRow(img(imgs.robot), `Robot — ${s.robot.label}`, s.robot.specs, money(s.robot.price, s.currency, s.locale)));
@@ -75,7 +80,10 @@ function offerEmailHtml(s: OfferSnapshot, imgs: EmailImages, img: (src: string |
       <div style="height:4px;background:${RED}"></div>
       <div style="padding:24px">
         <p>Dear ${s.customer.firstName} ${s.customer.lastName},</p>
-        <p>Thank you for your interest. Please find your configuration and estimated offer below. The full offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>
+        ${opts?.discountIntro && hasDiscount
+          ? `<p><b>We're happy to inform you that we've applied a special discount to your offer!</b></p>
+             <p>Please find your updated configuration and revised total below — <b>${s.discount!.label}: − ${money(s.discount!.amount, s.currency, s.locale)}</b>. The full updated offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>`
+          : `<p>Thank you for your interest. Please find your configuration and estimated offer below. The full offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>`}
         <table style="width:100%;border-collapse:collapse" cellpadding="0">
           <tbody>${rows.join("")}${discountRows}</tbody>
           <tfoot><tr style="border-top:2px solid ${RED}">
@@ -156,7 +164,13 @@ async function resendSend(apiKey: string, payload: Record<string, unknown>): Pro
   }
 }
 
-export async function sendOfferEmails(s: OfferSnapshot, pdf: Buffer): Promise<SendResult> {
+export async function sendOfferEmails(
+  s: OfferSnapshot,
+  pdf: Buffer,
+  opts?: { discountAnnouncement?: boolean }
+): Promise<SendResult> {
+  const discountIntro = !!opts?.discountAnnouncement && !!(s.discount && s.discount.amount > 0);
+  const customerSubject = discountIntro ? `Good news — a discount on your RHTS offer ${s.offerNumber}` : `Your RHTS offer ${s.offerNumber}`;
   const adminEmail = s.company.admin_email || "";
   const from = process.env.SMTP_FROM || s.company.company_email || "no-reply@rhts.local";
   const host = process.env.SMTP_HOST;
@@ -173,7 +187,7 @@ export async function sendOfferEmails(s: OfferSnapshot, pdf: Buffer): Promise<Se
       await fs.writeFile(path.join(dir, `${s.offerNumber}.pdf`), pdf);
       await fs.writeFile(
         path.join(dir, `${s.offerNumber}.html`),
-        `<h1>To customer: ${s.customer.email}</h1>${offerEmailHtml(s, imgs, asData)}<hr/><h1>To admin: ${adminEmail}</h1>${adminNotifyHtml(s, imgs, asData)}`
+        `<h1>To customer: ${s.customer.email}</h1>${offerEmailHtml(s, imgs, asData, { discountIntro })}<hr/><h1>To admin: ${adminEmail}</h1>${adminNotifyHtml(s, imgs, asData)}`
       );
       console.log(`[mail:preview] Offer ${s.offerNumber} → ${s.customer.email} (admin copy → ${adminEmail}). Saved to .mail-preview/`);
     } catch (e) {
@@ -196,8 +210,8 @@ export async function sendOfferEmails(s: OfferSnapshot, pdf: Buffer): Promise<Se
         from,
         to: [s.customer.email],
         bcc: adminEmail ? [adminEmail] : undefined,
-        subject: `Your RHTS offer ${s.offerNumber}`,
-        html: offerEmailHtml(s, imgs, asData),
+        subject: customerSubject,
+        html: offerEmailHtml(s, imgs, asData, { discountIntro }),
         attachments,
       });
       if (adminEmail) {
@@ -236,8 +250,8 @@ export async function sendOfferEmails(s: OfferSnapshot, pdf: Buffer): Promise<Se
       from,
       to: s.customer.email,
       bcc: adminEmail || undefined,
-      subject: `Your RHTS offer ${s.offerNumber}`,
-      html: offerEmailHtml(s, imgs, toCid),
+      subject: customerSubject,
+      html: offerEmailHtml(s, imgs, toCid, { discountIntro }),
       attachments: [pdfAttachment, ...inlineAttachments],
     });
 

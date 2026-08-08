@@ -188,8 +188,10 @@ export async function resendOffer(formData: FormData) {
   // Refresh company info so the admin copy reaches the current admin_email.
   snap.company = await getSettings();
 
+  // If a discount is applied, the customer email announces the good news.
+  const hasDiscount = !!(snap.discount && snap.discount.amount > 0);
   const pdf = await renderOfferPdf(snap);
-  const mail = await sendOfferEmails(snap, pdf);
+  const mail = await sendOfferEmails(snap, pdf, { discountAnnouncement: hasDiscount });
 
   await prisma.lead.update({
     where: { id },
