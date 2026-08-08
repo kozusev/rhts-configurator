@@ -9,7 +9,7 @@ const nav = [
   { href: "/admin/robots", label: "Robots" },
   { href: "/admin/groups", label: "Option groups" },
   { href: "/admin/projects", label: "Carousel projects" },
-  { href: "/admin/settings", label: "Settings" },
+  { href: "/admin/settings", label: "Settings", adminOnly: true },
   { href: "/admin/users", label: "Users", adminOnly: true },
   { href: "/admin/account", label: "My account" },
 ];

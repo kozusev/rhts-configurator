@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, getSessionUser } from "@/lib/auth";
 import { ml, locales } from "@/lib/i18n";
 
 function assertAuth() {
@@ -255,7 +255,9 @@ export async function duplicateProject(fd: FormData) {
 
 // ---------------- Settings ----------------
 export async function saveSettings(fd: FormData) {
-  assertAuth();
+  const me = await getSessionUser();
+  if (!me) redirect("/admin/login");
+  if (me.role !== "ADMIN") redirect("/admin"); // settings are admin-only
   const keys = ["company_name", "admin_email", "company_email", "company_phone", "company_website", "offer_prefix", "offer_validity_days"];
   for (const k of keys) {
     const value = str(fd, k);
