@@ -7,8 +7,7 @@
 npm-debug.log*
 .env
 .env*.local
-# Legacy local SQLite files (project now uses Postgres; data lives in seed-data.json)
-/prisma/*.db
+# SQLite database IS committed (the app's stored data); transient journal/wal files are not
 /prisma/*.db-journal
 /prisma/*.db-wal
 /prisma/*.db-shm
