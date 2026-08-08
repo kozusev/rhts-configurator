@@ -35,20 +35,17 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
 
   const sum = (arr: typeof leads) => arr.reduce((a, l) => a + l.total, 0);
   const inBucket = (statuses: readonly string[]) => leads.filter((l) => statuses.includes(l.status));
-  const idle = inBucket(IDLE_STATUSES);
-  const production = inBucket(["production"]);
-  const shipping = inBucket(["shipped", "delivered"]);
-  const installation = inBucket(["installation"]);
-  const finished = inBucket(["closed", "canceled", "terminated"]);
 
   const stats = [
-    { label: "Total leads", count: leads.length, sum: sum(leads), accent: "text-brand-300" },
-    { label: "Idle", count: idle.length, sum: sum(idle), accent: "text-emerald-300" },
-    { label: "Production", count: production.length, sum: sum(production), accent: "text-violet-300" },
-    { label: "Shipped / Delivered", count: shipping.length, sum: sum(shipping), accent: "text-cyan-300" },
-    { label: "Installation", count: installation.length, sum: sum(installation), accent: "text-indigo-300" },
-    { label: "Finished / Terminated", count: finished.length, sum: sum(finished), accent: "text-amber-300" },
-  ];
+    { label: "Total", set: leads, accent: "text-brand-300" },
+    { label: "Idle", set: inBucket(IDLE_STATUSES), accent: "text-emerald-300" },
+    { label: "Production", set: inBucket(["production"]), accent: "text-violet-300" },
+    { label: "Shipped / Delivered", set: inBucket(["shipped", "delivered"]), accent: "text-cyan-300" },
+    { label: "Installation", set: inBucket(["installation"]), accent: "text-indigo-300" },
+    { label: "Closed", set: inBucket(["closed"]), accent: "text-amber-300" },
+    { label: "Canceled", set: inBucket(["canceled"]), accent: "text-red-300" },
+    { label: "Finished", set: inBucket(["finished", "terminated"]), accent: "text-slate-300" },
+  ].map((s) => ({ label: s.label, accent: s.accent, count: s.set.length, sum: sum(s.set) }));
 
   return (
     <div>
@@ -75,13 +72,13 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
         })}
       </div>
 
-      {/* Stat cards — 2 across on mobile, 3 across on desktop */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      {/* Stat cards — compact, 3 across */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {stats.map((s) => (
-          <div key={s.label} className="card p-4 sm:p-5">
-            <div className="text-xs text-slate-400 sm:text-sm">{s.label}</div>
-            <div className={`mt-1 text-2xl font-bold sm:text-3xl ${s.accent}`}>{s.count}</div>
-            <div className="mt-1 text-sm font-semibold text-slate-200">{money(s.sum, leads[0]?.currency || "EUR")}</div>
+          <div key={s.label} className="card p-2.5 sm:p-3">
+            <div className="truncate text-[11px] leading-tight text-slate-400 sm:text-xs">{s.label}</div>
+            <div className={`text-xl font-bold sm:text-2xl ${s.accent}`}>{s.count}</div>
+            <div className="truncate text-[11px] font-semibold text-slate-300 sm:text-xs">{money(s.sum, leads[0]?.currency || "EUR")}</div>
           </div>
         ))}
       </div>

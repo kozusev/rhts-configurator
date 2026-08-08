@@ -1,7 +1,7 @@
 export const LEAD_STATUSES = [
   "new", "contacted", "updated", "discounted",
   "production", "shipped", "delivered", "installation",
-  "closed", "canceled", "terminated",
+  "closed", "canceled", "finished",
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
@@ -33,8 +33,9 @@ export function statusMeta(status: string): StatusMeta {
       return { label: "Closed", badge: "border-amber-400/50 bg-amber-400/20 text-amber-200", dot: "bg-amber-300", star: true };
     case "canceled":
       return { label: "Canceled", badge: "border-red-500/40 bg-red-500/15 text-red-300", dot: "bg-red-400", star: false };
-    case "terminated":
-      return { label: "Terminated", badge: "border-slate-500/50 bg-slate-600/30 text-slate-300", dot: "bg-slate-400", star: false };
+    case "finished":
+    case "terminated": // legacy alias
+      return { label: "Finished", badge: "border-slate-500/50 bg-slate-600/30 text-slate-300", dot: "bg-slate-400", star: false };
     default:
       return { label: status || "—", badge: "border-white/10 bg-white/5 text-slate-300", dot: "bg-slate-400", star: false };
   }
