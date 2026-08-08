@@ -34,15 +34,20 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
   const leads = await prisma.lead.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
 
   const sum = (arr: typeof leads) => arr.reduce((a, l) => a + l.total, 0);
-  const closed = leads.filter((l) => l.status === "closed");
-  const canceled = leads.filter((l) => l.status === "canceled");
-  const idle = leads.filter((l) => IDLE_STATUSES.includes(l.status));
+  const inBucket = (statuses: readonly string[]) => leads.filter((l) => statuses.includes(l.status));
+  const idle = inBucket(IDLE_STATUSES);
+  const production = inBucket(["production"]);
+  const shipping = inBucket(["shipped", "delivered"]);
+  const installation = inBucket(["installation"]);
+  const finished = inBucket(["closed", "canceled", "terminated"]);
 
   const stats = [
     { label: "Total leads", count: leads.length, sum: sum(leads), accent: "text-brand-300" },
-    { label: "Closed", count: closed.length, sum: sum(closed), accent: "text-amber-300" },
-    { label: "In progress", count: idle.length, sum: sum(idle), accent: "text-emerald-300" },
-    { label: "Canceled", count: canceled.length, sum: sum(canceled), accent: "text-red-300" },
+    { label: "Idle", count: idle.length, sum: sum(idle), accent: "text-emerald-300" },
+    { label: "Production", count: production.length, sum: sum(production), accent: "text-violet-300" },
+    { label: "Shipped / Delivered", count: shipping.length, sum: sum(shipping), accent: "text-cyan-300" },
+    { label: "Installation", count: installation.length, sum: sum(installation), accent: "text-indigo-300" },
+    { label: "Finished / Terminated", count: finished.length, sum: sum(finished), accent: "text-amber-300" },
   ];
 
   return (
@@ -70,8 +75,8 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
         })}
       </div>
 
-      {/* Stat cards — 2x2 on mobile, 4 across on desktop */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Stat cards — 2 across on mobile, 3 across on desktop */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {stats.map((s) => (
           <div key={s.label} className="card p-4 sm:p-5">
             <div className="text-xs text-slate-400 sm:text-sm">{s.label}</div>

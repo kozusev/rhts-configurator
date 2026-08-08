@@ -5,10 +5,8 @@ export const LEAD_STATUSES = [
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
-/** Statuses that count as a live/active lead (not won, lost or dead). */
-export const IDLE_STATUSES: readonly string[] = [
-  "new", "contacted", "updated", "discounted", "production", "shipped", "delivered", "installation",
-];
+/** Early-pipeline statuses grouped as "Idle" on the dashboard. */
+export const IDLE_STATUSES: readonly string[] = ["new", "contacted", "updated", "discounted"];
 
 export type StatusMeta = { label: string; badge: string; dot: string; star: boolean };
 
