@@ -17,15 +17,24 @@ async function actor(): Promise<string> {
 }
 
 /**
- * Load a lead and enforce access: agents may only act on the leads they created.
- * Returns the lead plus the acting user's email.
+ * Load a lead and enforce access rules:
+ *  - Agents may only act on the leads they created.
+ *  - Agents cannot modify a CLOSED lead (only admin/manager can).
+ *  - `managerOnly` actions (discounts, payments) are blocked for agents entirely.
  */
-async function ownedLead(id: string): Promise<{ lead: NonNullable<Awaited<ReturnType<typeof prisma.lead.findUnique>>>; author: string }> {
+async function ownedLead(
+  id: string,
+  opts?: { managerOnly?: boolean }
+): Promise<{ lead: NonNullable<Awaited<ReturnType<typeof prisma.lead.findUnique>>>; author: string }> {
   const me = await getSessionUser();
   if (!me) redirect("/admin/login");
   const lead = await prisma.lead.findUnique({ where: { id } });
   if (!lead) redirect("/admin");
-  if (me.role === "AGENT" && lead.createdBy !== me.email) redirect("/admin");
+  if (me.role === "AGENT") {
+    if (lead.createdBy !== me.email) redirect("/admin");
+    if (opts?.managerOnly) redirect(`/admin/leads/${id}?error=manageronly`);
+    if (lead.status === "closed") redirect(`/admin/leads/${id}?error=closedlocked`);
+  }
   return { lead, author: me.email };
 }
 
@@ -85,7 +94,7 @@ export async function applyLeadDiscount(formData: FormData) {
   const value = parseFloat(String(formData.get("discount_value") || "0")) || 0;
   const customLabel = String(formData.get("discount_label") || "").trim();
 
-  const { lead, author } = await ownedLead(id);
+  const { lead, author } = await ownedLead(id, { managerOnly: true });
 
   let snap: OfferSnapshot;
   try {
@@ -149,7 +158,7 @@ export async function recordPayment(formData: FormData) {
   const id = String(formData.get("id") || "");
   const amount = round2(parseFloat(String(formData.get("amount") || "0")) || 0);
 
-  const { lead, author } = await ownedLead(id);
+  const { lead, author } = await ownedLead(id, { managerOnly: true });
   if (amount === 0) redirect(`/admin/leads/${id}?error=badamount`);
 
   const paid = round2(Math.max(0, lead.paid + amount));

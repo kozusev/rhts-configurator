@@ -26,6 +26,8 @@ const FLASH: Record<string, string> = {
   baddate: "Please enter a valid date.",
   badamount: "Please enter a non-zero amount.",
   forbidden: "Only admins can delete leads.",
+  manageronly: "Only a manager or admin can apply discounts or record payments.",
+  closedlocked: "This lead is closed — only a manager or admin can modify it.",
   corrupt: "This offer's data is corrupt and could not be read.",
 };
 
@@ -68,6 +70,12 @@ export default async function LeadDetailPage({
   const deadlineISO = lead.deadline ? new Date(lead.deadline).toISOString().slice(0, 10) : "";
   const deadlineOverdue = lead.deadline ? new Date(lead.deadline).getTime() < Date.now() : false;
 
+  // Permissions
+  const isManager = me.role === "ADMIN" || me.role === "MANAGER";
+  const agentLocked = me.role === "AGENT" && lead.status === "closed"; // agents can't touch a closed lead
+  const canModify = isManager || !agentLocked; // can change status / notes / modify / resend
+  const canManageMoney = isManager; // discounts + payments: admin/manager only
+
   return (
     <div className="max-w-5xl">
       <Link href="/admin" className="text-sm text-slate-400 hover:text-white">← Dashboard</Link>
@@ -84,11 +92,15 @@ export default async function LeadDetailPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <a href={`/api/offer/${lead.offerNumber}/pdf`} target="_blank" rel="noopener noreferrer" className="btn-ghost !px-3 !py-1.5 text-sm">Open PDF</a>
-          <form action={resendOffer}>
-            <input type="hidden" name="id" value={lead.id} />
-            <button className="btn-ghost !px-3 !py-1.5 text-sm">✉️ Resend offer</button>
-          </form>
-          <Link href={`/admin/leads/${lead.id}/edit`} className="btn-primary !px-3 !py-1.5 text-sm">Modify offer →</Link>
+          {canModify && (
+            <form action={resendOffer}>
+              <input type="hidden" name="id" value={lead.id} />
+              <button className="btn-ghost !px-3 !py-1.5 text-sm">✉️ Resend offer</button>
+            </form>
+          )}
+          {canModify && (
+            <Link href={`/admin/leads/${lead.id}/edit`} className="btn-primary !px-3 !py-1.5 text-sm">Modify offer →</Link>
+          )}
         </div>
       </div>
 
@@ -104,7 +116,7 @@ export default async function LeadDetailPage({
           <div className="card p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-bold">Customer</h2>
-              <EditCustomerModal
+              {canModify && <EditCustomerModal
                 leadId={lead.id}
                 customer={{
                   firstName: lead.firstName,
@@ -116,7 +128,7 @@ export default async function LeadDetailPage({
                   deliveryAddress: lead.deliveryAddress,
                   note: snap?.customer?.note || "",
                 }}
-              />
+              />}
             </div>
             <div className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
               <div><span className="text-slate-500">Name:</span> <span className="font-medium">{lead.firstName} {lead.lastName}</span></div>
@@ -177,6 +189,13 @@ export default async function LeadDetailPage({
 
         {/* Right: actions */}
         <div className="space-y-6">
+          {agentLocked && (
+            <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">
+              🔒 This lead is <b>closed</b>. Only a manager or admin can modify it now.
+            </div>
+          )}
+
+          {canModify && (
           <div className="card p-5">
             <h2 className="mb-3 font-bold">Status</h2>
             <form action={setLeadStatus} className="flex gap-2">
@@ -187,7 +206,9 @@ export default async function LeadDetailPage({
               <button className="btn-ghost !px-3 !py-1.5 text-sm">Save</button>
             </form>
           </div>
+          )}
 
+          {canModify && (
           <div className="card p-5">
             <h2 className="mb-3 font-bold">Deadline</h2>
             <form action={setLeadDeadline} className="flex gap-2">
@@ -197,7 +218,9 @@ export default async function LeadDetailPage({
             </form>
             {lead.deadline && deadlineOverdue && <p className="mt-2 text-xs text-red-400">Overdue.</p>}
           </div>
+          )}
 
+          {canManageMoney && (
           <div className="card p-5">
             <h2 className="mb-1 font-bold">Payments</h2>
             <div className="mb-3 space-y-1 text-sm">
@@ -212,7 +235,9 @@ export default async function LeadDetailPage({
             </form>
             <p className="mt-2 text-xs text-slate-500">Records a down-payment / instalment. Use a negative amount to correct.</p>
           </div>
+          )}
 
+          {canManageMoney && (
           <div className="card p-5">
             <h2 className="mb-1 font-bold">Discount</h2>
             <p className="mb-3 text-xs text-slate-500">Updates the offer total. Use <b>Resend offer</b> above to email it to the client.</p>
@@ -230,7 +255,9 @@ export default async function LeadDetailPage({
             </form>
             {hasDiscount && <p className="mt-2 text-xs text-emerald-400">Current: {snap.discount.label} (− {money(snap.discount.amount, lead.currency)}). Set 0 to remove.</p>}
           </div>
+          )}
 
+          {canModify && (
           <div className="card p-5">
             <h2 className="mb-3 font-bold">Add note</h2>
             <form action={addLeadNote} className="space-y-3">
@@ -239,6 +266,7 @@ export default async function LeadDetailPage({
               <button className="btn-ghost w-full !py-1.5 text-sm">Add note</button>
             </form>
           </div>
+          )}
 
           {me.role === "ADMIN" && (
             <div className="card border-red-500/20 p-5">

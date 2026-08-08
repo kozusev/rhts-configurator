@@ -26,6 +26,11 @@ export async function POST(req: NextRequest, { params }: { params: { offerNumber
 
   const lead = await prisma.lead.findUnique({ where: { offerNumber: params.offerNumber } });
   if (!lead) return NextResponse.json({ error: "Offer not found" }, { status: 404 });
+  // Agents may only revise their own leads, and not once a lead is closed.
+  if (me.role === "AGENT") {
+    if (lead.createdBy !== me.email) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (lead.status === "closed") return NextResponse.json({ error: "This lead is closed — only a manager or admin can modify it." }, { status: 403 });
+  }
 
   let body: unknown;
   try {

@@ -48,9 +48,10 @@ export async function POST(req: NextRequest) {
     const prefix = await getSetting("offer_prefix", "RHTS");
     const offerNumber = await nextOfferNumber(prefix);
     const snapshot = await buildOfferSnapshot(input, offerNumber);
-    const pdf = await renderOfferPdf(snapshot);
 
-    // Save the lead FIRST so it's never lost, even if email delivery stalls or fails.
+    // Save the lead FIRST so it's never lost. Admin-created leads (createdBy set) are
+    // auto-assigned to their creator and NOT emailed — the offer is sent manually from
+    // the lead page. Public website leads (createdBy empty) get the instant offer emailed.
     const lead = await prisma.lead.create({
       data: {
         offerNumber,
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
         deliveryAddress: input.deliveryAddress || "",
         regNumber: input.regNumber || "",
         createdBy,
+        assignedTo: createdBy, // manager/agent-created leads stay assigned to their creator
         locale: input.locale,
         packageId: input.packageId,
         robotId: input.robotId,
@@ -75,16 +77,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Attempt delivery — failures/timeouts must not break the offer response.
     let emailStatus = "pending";
-    try {
-      const mail = await sendOfferEmails(snapshot, pdf);
-      emailStatus = mail.mode;
-    } catch (e) {
-      console.error("[api/offer] email error", e);
-      emailStatus = "failed";
+    if (!createdBy) {
+      // Public website submission → auto-send the instant offer (failures must not break the response).
+      try {
+        const pdf = await renderOfferPdf(snapshot);
+        const mail = await sendOfferEmails(snapshot, pdf);
+        emailStatus = mail.mode;
+      } catch (e) {
+        console.error("[api/offer] email error", e);
+        emailStatus = "failed";
+      }
+      await prisma.lead.update({ where: { id: lead.id }, data: { emailStatus } });
     }
-    await prisma.lead.update({ where: { id: lead.id }, data: { emailStatus } });
 
     return NextResponse.json({ offerNumber, pdfUrl: `/api/offer/${offerNumber}/pdf`, emailStatus, leadUrl: `/admin/leads/${lead.id}` });
   } catch (e) {
