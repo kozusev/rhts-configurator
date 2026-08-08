@@ -14,7 +14,9 @@ async function requireAdmin() {
 }
 
 function cleanRole(v: FormDataEntryValue | null): Role {
-  return v === "ADMIN" ? "ADMIN" : "MANAGER";
+  if (v === "ADMIN") return "ADMIN";
+  if (v === "AGENT") return "AGENT";
+  return "MANAGER";
 }
 
 export async function createUser(formData: FormData) {

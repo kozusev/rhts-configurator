@@ -95,8 +95,10 @@ function OfferDoc({
               <Text style={styles.sectionTitle}>Prepared for</Text>
               <Text style={styles.kv}>{s.customer.firstName} {s.customer.lastName}</Text>
               {s.customer.company ? <Text style={[styles.kv, styles.muted]}>{s.customer.company}</Text> : null}
+              {s.customer.regNumber ? <Text style={[styles.kv, styles.muted]}>Reg./VAT: {s.customer.regNumber}</Text> : null}
               <Text style={[styles.kv, styles.muted]}>{s.customer.email}</Text>
               <Text style={[styles.kv, styles.muted]}>{s.customer.phone}</Text>
+              {s.customer.deliveryAddress ? <Text style={[styles.kv, styles.muted]}>Delivery: {s.customer.deliveryAddress}</Text> : null}
             </View>
             <View style={styles.col}>
               <Text style={styles.sectionTitle}>Validity</Text>

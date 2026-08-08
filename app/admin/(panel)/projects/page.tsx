@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireContentEditor } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { deleteProject, duplicateProject } from "../../actions";
@@ -6,6 +7,7 @@ import { deleteProject, duplicateProject } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsList() {
+  await requireContentEditor();
   const projects = await prisma.project.findMany({ orderBy: { order: "asc" } });
   return (
     <div>

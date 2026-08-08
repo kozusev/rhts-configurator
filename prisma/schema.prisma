@@ -114,6 +114,9 @@ model Lead {
   email       String
   phone       String
   company     String   @default("")
+  deliveryAddress String @default("")
+  regNumber   String   @default("")   // company / VAT registration number
+  createdBy   String   @default("")   // email of the user who created it; "" = from the public website
   locale      String   @default("en")
   packageId   String   @default("")
   robotId     String   @default("")

@@ -3,11 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { isAuthenticated, getSessionUser } from "@/lib/auth";
+import { isAuthenticated, getSessionUser, canEditContent } from "@/lib/auth";
 import { ml, locales } from "@/lib/i18n";
 
 function assertAuth() {
   if (!isAuthenticated()) redirect("/admin/login");
+}
+
+/** Catalog/project edits require an ADMIN or MANAGER (agents are blocked). */
+async function assertContentEditor() {
+  const me = await getSessionUser();
+  if (!me) redirect("/admin/login");
+  if (!canEditContent(me.role)) redirect("/admin");
 }
 
 /** Read the three localized inputs (name_en, name_es, name_uk) into a JSON string. */
@@ -42,7 +49,7 @@ function mlCopy(json: string): string {
 
 // ---------------- Packages ----------------
 export async function savePackage(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const id = str(fd, "id");
   const data = {
     slug: str(fd, "slug"),
@@ -64,7 +71,7 @@ export async function savePackage(fd: FormData) {
   redirect("/admin/packages");
 }
 export async function deletePackage(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   await prisma.package.delete({ where: { id: str(fd, "id") } });
   revalidatePath("/admin/packages");
 }
@@ -75,7 +82,7 @@ async function uniquePackageSlug(base: string): Promise<string> {
   return slug;
 }
 export async function duplicatePackage(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const p = await prisma.package.findUnique({ where: { id: str(fd, "id") } });
   if (!p) return;
   await prisma.package.create({
@@ -99,7 +106,7 @@ export async function duplicatePackage(fd: FormData) {
 
 // ---------------- Robots ----------------
 export async function saveRobot(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const id = str(fd, "id");
   const data = {
     brand: str(fd, "brand"),
@@ -121,12 +128,12 @@ export async function saveRobot(fd: FormData) {
   redirect("/admin/robots");
 }
 export async function deleteRobot(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   await prisma.robot.delete({ where: { id: str(fd, "id") } });
   revalidatePath("/admin/robots");
 }
 export async function duplicateRobot(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const r = await prisma.robot.findUnique({ where: { id: str(fd, "id") } });
   if (!r) return;
   await prisma.robot.create({
@@ -150,7 +157,7 @@ export async function duplicateRobot(fd: FormData) {
 
 // ---------------- Option groups ----------------
 export async function saveGroup(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const id = str(fd, "id");
   const data = {
     name: mlFrom(fd, "name"),
@@ -164,14 +171,14 @@ export async function saveGroup(fd: FormData) {
   redirect("/admin/groups");
 }
 export async function deleteGroup(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   await prisma.optionGroup.delete({ where: { id: str(fd, "id") } });
   revalidatePath("/admin/groups");
 }
 
 // ---------------- Options ----------------
 export async function saveOption(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const id = str(fd, "id");
   const groupId = str(fd, "groupId");
   const data = {
@@ -190,13 +197,13 @@ export async function saveOption(fd: FormData) {
   redirect(`/admin/groups/${groupId}`);
 }
 export async function deleteOption(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const groupId = str(fd, "groupId");
   await prisma.option.delete({ where: { id: str(fd, "id") } });
   revalidatePath(`/admin/groups/${groupId}`);
 }
 export async function duplicateOption(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const o = await prisma.option.findUnique({ where: { id: str(fd, "id") } });
   if (!o) return;
   await prisma.option.create({
@@ -216,7 +223,7 @@ export async function duplicateOption(fd: FormData) {
 
 // ---------------- Projects ----------------
 export async function saveProject(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const id = str(fd, "id");
   const data = {
     title: mlFrom(fd, "title"),
@@ -232,12 +239,12 @@ export async function saveProject(fd: FormData) {
   redirect("/admin/projects");
 }
 export async function deleteProject(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   await prisma.project.delete({ where: { id: str(fd, "id") } });
   revalidatePath("/admin/projects");
 }
 export async function duplicateProject(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   const p = await prisma.project.findUnique({ where: { id: str(fd, "id") } });
   if (!p) return;
   await prisma.project.create({
@@ -272,7 +279,7 @@ export async function saveSettings(fd: FormData) {
 
 // ---------------- Lead status ----------------
 export async function updateLeadStatus(fd: FormData) {
-  assertAuth();
+  await assertContentEditor();
   await prisma.lead.update({ where: { id: str(fd, "id") }, data: { status: str(fd, "status") } });
   revalidatePath("/admin");
 }

@@ -1,11 +1,29 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createHmac, timingSafeEqual, randomBytes, scryptSync } from "crypto";
 import { prisma } from "@/lib/db";
 
 const COOKIE = "rhts_admin";
 
-export type Role = "ADMIN" | "MANAGER";
+export type Role = "ADMIN" | "MANAGER" | "AGENT";
 export type SessionUser = { id: string; email: string; name: string; role: Role };
+
+/** Admin + Manager can edit the catalog (packs/robots/options), projects and see all leads. Agents cannot. */
+export function canEditContent(role: Role): boolean {
+  return role === "ADMIN" || role === "MANAGER";
+}
+/** Agents only see leads they created; everyone else sees all leads. */
+export function canSeeAllLeads(role: Role): boolean {
+  return role === "ADMIN" || role === "MANAGER";
+}
+
+/** Page guard: redirect agents (and logged-out users) away from catalog/project pages. */
+export async function requireContentEditor(): Promise<SessionUser> {
+  const me = await getSessionUser();
+  if (!me) redirect("/admin/login");
+  if (!canEditContent(me.role)) redirect("/admin");
+  return me;
+}
 
 function secret(): string {
   return process.env.AUTH_SECRET || "dev-secret";

@@ -73,6 +73,8 @@ const dict: Dict = {
   email: { en: "Email", es: "Correo", uk: "Ел. пошта" },
   phone: { en: "Phone", es: "Teléfono", uk: "Телефон" },
   company: { en: "Company (optional)", es: "Empresa (opcional)", uk: "Компанія (необов'язково)" },
+  reg_number: { en: "Reg. / VAT number", es: "Nº de registro / IVA", uk: "Реєстр. номер / ПДВ" },
+  delivery_address: { en: "Delivery address", es: "Dirección de entrega", uk: "Адреса доставки" },
   get_offer: { en: "Get my PDF offer", es: "Recibir mi oferta en PDF", uk: "Отримати пропозицію у PDF" },
   sending: { en: "Sending…", es: "Enviando…", uk: "Надсилання…" },
   thanks_title: { en: "Thank you!", es: "¡Gracias!", uk: "Дякуємо!" },

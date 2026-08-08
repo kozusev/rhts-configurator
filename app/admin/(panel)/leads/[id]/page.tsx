@@ -6,7 +6,7 @@ import { money } from "@/lib/format";
 import { LEAD_STATUSES } from "@/lib/leadStatus";
 import StatusBadge from "@/components/StatusBadge";
 import DeleteLeadButton from "@/components/DeleteLeadButton";
-import { setLeadStatus, addLeadNote, applyLeadDiscount, resendOffer, setLeadDeadline, recordPayment } from "../../../lead-actions";
+import { setLeadStatus, addLeadNote, applyLeadDiscount, resendOffer, setLeadDeadline, recordPayment, updateLeadCustomer } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,9 @@ const FLASH: Record<string, string> = {
   discount: "Discount applied. Use “Resend offer” to email it to the client.",
   modified: "Offer reconfigured. Use “Resend offer” to email it to the client.",
   resent: "Offer re-sent to the client.",
+  created: "Lead created.",
+  customer: "Customer details updated.",
+  custinvalid: "First name, last name and email are required.",
   emailfailed: "Email could NOT be sent — check your SMTP settings. The offer is saved; see the activity log for the exact error.",
   deadline: "Deadline updated.",
   payment: "Payment recorded.",
@@ -49,6 +52,8 @@ export default async function LeadDetailPage({
     include: { events: { orderBy: { createdAt: "desc" } } },
   });
   if (!lead) redirect("/admin");
+  // Agents may only open leads they created.
+  if (me.role === "AGENT" && lead.createdBy !== me.email) redirect("/admin");
 
   let snap: any = {};
   try { snap = JSON.parse(lead.snapshot); } catch {}
@@ -96,11 +101,24 @@ export default async function LeadDetailPage({
         {/* Left: offer summary */}
         <div className="space-y-6 lg:col-span-2">
           <div className="card p-5">
-            <h2 className="mb-3 font-bold">Customer</h2>
-            <div className="text-lg font-semibold">{lead.firstName} {lead.lastName} {lead.company && <span className="text-sm font-normal text-slate-400">· {lead.company}</span>}</div>
-            <div className="text-sm text-slate-400">{lead.email} · {lead.phone}</div>
-            <div className="mt-1 text-xs text-slate-500">Submitted {fmt(lead.createdAt)} · {lead.locale.toUpperCase()}</div>
-            {snap?.customer?.note && <div className="mt-2 text-sm text-slate-300">Note: {snap.customer.note}</div>}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-bold">Customer</h2>
+              <span className="text-xs text-slate-500">
+                {lead.createdBy ? <>👤 Created by {lead.createdBy.split("@")[0]}</> : <>🌐 From website</>} · {fmt(lead.createdAt)} · {lead.locale.toUpperCase()}
+              </span>
+            </div>
+            <form action={updateLeadCustomer} className="grid gap-3 sm:grid-cols-2">
+              <input type="hidden" name="id" value={lead.id} />
+              <div><label className="label">First name *</label><input name="firstName" defaultValue={lead.firstName} className="field" /></div>
+              <div><label className="label">Last name *</label><input name="lastName" defaultValue={lead.lastName} className="field" /></div>
+              <div><label className="label">Email *</label><input name="email" type="email" defaultValue={lead.email} className="field" /></div>
+              <div><label className="label">Phone</label><input name="phone" defaultValue={lead.phone} className="field" /></div>
+              <div><label className="label">Company</label><input name="company" defaultValue={lead.company} className="field" /></div>
+              <div><label className="label">Reg. / VAT number</label><input name="regNumber" defaultValue={lead.regNumber} className="field" /></div>
+              <div className="sm:col-span-2"><label className="label">Delivery address</label><input name="deliveryAddress" defaultValue={lead.deliveryAddress} className="field" /></div>
+              <div className="sm:col-span-2"><label className="label">Note</label><textarea name="note" rows={2} defaultValue={snap?.customer?.note || ""} className="field text-sm" /></div>
+              <div className="sm:col-span-2"><button className="btn-ghost !py-1.5 text-sm">Save customer details</button></div>
+            </form>
           </div>
 
           <div className="card p-5">

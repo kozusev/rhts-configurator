@@ -11,7 +11,7 @@ export type OfferSnapshot = {
   date: string; // ISO
   locale: Locale;
   currency: string;
-  customer: { firstName: string; lastName: string; email: string; phone: string; company: string; note: string };
+  customer: { firstName: string; lastName: string; email: string; phone: string; company: string; note: string; deliveryAddress: string; regNumber: string };
   package: { name: string; price: number; spindle: string; toolHolder: string; image?: string; description?: string };
   robot: { label: string; price: number; specs: string; image?: string } | null;
   options: OfferLineItem[];
@@ -33,6 +33,8 @@ export type OfferInput = {
   phone: string;
   company?: string;
   note?: string;
+  deliveryAddress?: string;
+  regNumber?: string;
 };
 
 /** Build an offer snapshot, computing all prices server-side from the DB. */
@@ -79,6 +81,8 @@ export async function buildOfferSnapshot(input: OfferInput, offerNumber: string)
       phone: input.phone,
       company: input.company || "",
       note: input.note || "",
+      deliveryAddress: input.deliveryAddress || "",
+      regNumber: input.regNumber || "",
     },
     package: { name: t(pkg.name, locale), price: pkg.basePrice, spindle: pkg.spindle, toolHolder: pkg.toolHolder, image: pkg.image || "", description: t(pkg.description, locale) },
     robot: robot

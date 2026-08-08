@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireContentEditor } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { deleteGroup } from "../../actions";
@@ -6,6 +7,7 @@ import { deleteGroup } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function GroupsList() {
+  await requireContentEditor();
   const groups = await prisma.optionGroup.findMany({
     orderBy: { order: "asc" },
     include: { _count: { select: { options: true } } },

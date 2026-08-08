@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireContentEditor } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { saveProject } from "../../../actions";
@@ -8,6 +9,7 @@ import ImageUpload from "@/components/admin/ImageUpload";
 export const dynamic = "force-dynamic";
 
 export default async function EditProject({ params }: { params: { id: string } }) {
+  await requireContentEditor();
   const isNew = params.id === "new";
   const p = isNew ? null : await prisma.project.findUnique({ where: { id: params.id } });
   if (!isNew && !p) notFound();

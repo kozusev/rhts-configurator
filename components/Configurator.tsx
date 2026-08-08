@@ -29,7 +29,7 @@ type Labels = Record<string, string>;
 export type ConfiguratorInitial = {
   robotId?: string;
   optionIds?: string[];
-  customer?: Partial<{ firstName: string; lastName: string; email: string; phone: string; company: string; note: string }>;
+  customer?: Partial<{ firstName: string; lastName: string; email: string; phone: string; company: string; note: string; deliveryAddress: string; regNumber: string }>;
 };
 
 export default function Configurator({
@@ -44,6 +44,7 @@ export default function Configurator({
   submitLabel,
   returnTo,
   packages,
+  showCustomerForm,
 }: {
   locale: Locale;
   pkg: PackageVM;
@@ -56,7 +57,10 @@ export default function Configurator({
   submitLabel?: string;
   returnTo?: string;
   packages?: AdminPackageVM[];
+  showCustomerForm?: boolean;
 }) {
+  // Customer form shows on the public site and in admin "create lead" mode; hidden in "modify offer" mode.
+  const customerVisible = showCustomerForm ?? !adminMode;
   const [robotId, setRobotId] = useState<string>(initial?.robotId || "");
   const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set(initial?.optionIds || []));
   const [form, setForm] = useState({
@@ -66,6 +70,8 @@ export default function Configurator({
     phone: initial?.customer?.phone || "",
     company: initial?.customer?.company || "",
     note: initial?.customer?.note || "",
+    deliveryAddress: initial?.customer?.deliveryAddress || "",
+    regNumber: initial?.customer?.regNumber || "",
   });
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -138,9 +144,10 @@ export default function Configurator({
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed");
       const data = await res.json();
-      if (adminMode && returnTo) {
-        // Back to the lead detail page after saving the modification.
-        window.location.href = `${returnTo}?ok=modified`;
+      if (adminMode) {
+        // Modify mode → back to the lead; create mode → the newly created lead.
+        const dest = returnTo ? `${returnTo}?ok=modified` : data.leadUrl ? `${data.leadUrl}?ok=created` : "/admin";
+        window.location.href = dest;
         return;
       }
       setResult({ offerNumber: data.offerNumber, pdfUrl: data.pdfUrl });
@@ -282,8 +289,8 @@ export default function Configurator({
           </section>
         )}
 
-        {/* Contact form — hidden in admin modify mode (client details aren't edited here) */}
-        {!adminMode && (
+        {/* Contact form — hidden only in admin "modify offer" mode */}
+        {customerVisible && (
         <section id="contact-form">
           <h2 className="mb-4 text-xl font-bold">{labels.step_contact}</h2>
           <form onSubmit={submit} className="card space-y-4 p-6">
@@ -304,9 +311,17 @@ export default function Configurator({
                 <label className="label">{labels.phone} *</label>
                 <input className="field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
-              <div className="sm:col-span-2">
+              <div>
                 <label className="label">{labels.company}</label>
                 <input className="field" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">{labels.reg_number}</label>
+                <input className="field" value={form.regNumber} onChange={(e) => setForm({ ...form, regNumber: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label">{labels.delivery_address}</label>
+                <input className="field" value={form.deliveryAddress} onChange={(e) => setForm({ ...form, deliveryAddress: e.target.value })} />
               </div>
               <div className="sm:col-span-2">
                 <label className="label">{labels.optional_note}</label>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireContentEditor } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { saveOption } from "../../../../../actions";
@@ -8,6 +9,7 @@ import ImageUpload from "@/components/admin/ImageUpload";
 export const dynamic = "force-dynamic";
 
 export default async function EditOption({ params }: { params: { id: string; oid: string } }) {
+  await requireContentEditor();
   const isNew = params.oid === "new";
   const group = await prisma.optionGroup.findUnique({ where: { id: params.id } });
   if (!group) notFound();

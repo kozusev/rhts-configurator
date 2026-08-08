@@ -6,6 +6,7 @@ import { buildOfferSnapshot, nextOfferNumber, type OfferInput } from "@/lib/offe
 import { renderOfferPdf } from "@/lib/pdf";
 import { sendOfferEmails } from "@/lib/mail";
 import { getSetting } from "@/lib/settings";
+import { getSessionUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,8 @@ const schema = z.object({
   phone: z.string().min(3),
   company: z.string().optional().default(""),
   note: z.string().optional().default(""),
+  deliveryAddress: z.string().optional().default(""),
+  regNumber: z.string().optional().default(""),
 });
 
 export async function POST(req: NextRequest) {
@@ -36,6 +39,10 @@ export async function POST(req: NextRequest) {
   }
 
   const input = parsed.data as OfferInput;
+  // Authenticated submissions (from the admin "New lead" flow) record the creator;
+  // anonymous submissions come from the public website (createdBy stays "").
+  const me = await getSessionUser();
+  const createdBy = me?.email || "";
 
   try {
     const prefix = await getSetting("offer_prefix", "RHTS");
@@ -52,6 +59,9 @@ export async function POST(req: NextRequest) {
         email: input.email,
         phone: input.phone,
         company: input.company || "",
+        deliveryAddress: input.deliveryAddress || "",
+        regNumber: input.regNumber || "",
+        createdBy,
         locale: input.locale,
         packageId: input.packageId,
         robotId: input.robotId,
@@ -76,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
     await prisma.lead.update({ where: { id: lead.id }, data: { emailStatus } });
 
-    return NextResponse.json({ offerNumber, pdfUrl: `/api/offer/${offerNumber}/pdf`, emailStatus });
+    return NextResponse.json({ offerNumber, pdfUrl: `/api/offer/${offerNumber}/pdf`, emailStatus, leadUrl: `/admin/leads/${lead.id}` });
   } catch (e) {
     console.error("[api/offer] error", e);
     return NextResponse.json({ error: "Could not generate offer" }, { status: 500 });

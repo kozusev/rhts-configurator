@@ -18,6 +18,7 @@ export type LeadRow = {
   company: string;
   email: string;
   phone: string;
+  createdBy: string;
   snapshot: string;
   createdAt: Date;
 };
@@ -58,6 +59,7 @@ export default function LeadCard({ lead: l }: { lead: LeadRow }) {
           <div className="text-xl font-bold text-brand-300">{money(l.total, l.currency)}</div>
           {hasDiscount && <div className="text-xs font-medium text-emerald-400">− {money(l.discount, l.currency)} discount</div>}
           <div className="text-xs text-slate-400">{l.assignedTo ? `👤 ${l.assignedTo.split("@")[0]}` : "Unassigned"} · {new Date(l.createdAt).toISOString().slice(0, 10)}</div>
+          <div className="text-xs text-slate-500">{l.createdBy ? `by ${l.createdBy.split("@")[0]}` : "🌐 website"}</div>
         </div>
       </div>
 

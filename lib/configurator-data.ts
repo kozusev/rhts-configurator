@@ -7,7 +7,7 @@ const LABEL_KEYS = [
   "robot_controller", "select", "selected", "add", "added", "summary", "base_pack", "robot",
   "options", "total", "first_name", "last_name", "email", "phone", "company", "get_offer",
   "sending", "thanks_title", "thanks_body", "download_pdf", "required", "no_robot",
-  "optional_note",
+  "optional_note", "reg_number", "delivery_address",
 ];
 
 /** Build the pack/robots/options/labels view-models the Configurator needs, by package id. */

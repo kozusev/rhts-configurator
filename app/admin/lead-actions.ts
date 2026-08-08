@@ -16,6 +16,19 @@ async function actor(): Promise<string> {
   return me.email;
 }
 
+/**
+ * Load a lead and enforce access: agents may only act on the leads they created.
+ * Returns the lead plus the acting user's email.
+ */
+async function ownedLead(id: string): Promise<{ lead: NonNullable<Awaited<ReturnType<typeof prisma.lead.findUnique>>>; author: string }> {
+  const me = await getSessionUser();
+  if (!me) redirect("/admin/login");
+  const lead = await prisma.lead.findUnique({ where: { id } });
+  if (!lead) redirect("/admin");
+  if (me.role === "AGENT" && lead.createdBy !== me.email) redirect("/admin");
+  return { lead, author: me.email };
+}
+
 /** Permanently delete a lead — ADMIN only. Cascades its activity log. */
 export async function deleteLead(formData: FormData) {
   const me = await getSessionUser();
@@ -40,13 +53,11 @@ async function logEvent(leadId: string, type: string, message: string, author: s
 }
 
 export async function setLeadStatus(formData: FormData) {
-  const author = await actor();
   const id = String(formData.get("id") || "");
   const status = String(formData.get("status") || "");
   if (!LEAD_STATUSES.includes(status as any)) redirect(`/admin/leads/${id}`);
 
-  const lead = await prisma.lead.findUnique({ where: { id } });
-  if (!lead) redirect("/admin");
+  const { lead, author } = await ownedLead(id);
   if (lead.status !== status) {
     await prisma.lead.update({ where: { id }, data: { status, assignedTo: author } });
     await logEvent(id, "status", `Status: ${lead.status} → ${status}`, author);
@@ -57,13 +68,11 @@ export async function setLeadStatus(formData: FormData) {
 }
 
 export async function addLeadNote(formData: FormData) {
-  const author = await actor();
   const id = String(formData.get("id") || "");
   const message = String(formData.get("note") || "").trim();
   if (!message) redirect(`/admin/leads/${id}`);
 
-  const lead = await prisma.lead.findUnique({ where: { id } });
-  if (!lead) redirect("/admin");
+  const { author } = await ownedLead(id);
   await prisma.lead.update({ where: { id }, data: { assignedTo: author } });
   await logEvent(id, "note", message, author);
   revalidatePath(`/admin/leads/${id}`);
@@ -71,14 +80,12 @@ export async function addLeadNote(formData: FormData) {
 }
 
 export async function applyLeadDiscount(formData: FormData) {
-  const author = await actor();
   const id = String(formData.get("id") || "");
   const type = String(formData.get("discount_type") || "percent");
   const value = parseFloat(String(formData.get("discount_value") || "0")) || 0;
   const customLabel = String(formData.get("discount_label") || "").trim();
 
-  const lead = await prisma.lead.findUnique({ where: { id } });
-  if (!lead) redirect("/admin");
+  const { lead, author } = await ownedLead(id);
 
   let snap: OfferSnapshot;
   try {
@@ -122,12 +129,10 @@ export async function applyLeadDiscount(formData: FormData) {
 }
 
 export async function setLeadDeadline(formData: FormData) {
-  const author = await actor();
   const id = String(formData.get("id") || "");
   const raw = String(formData.get("deadline") || "").trim();
 
-  const lead = await prisma.lead.findUnique({ where: { id } });
-  if (!lead) redirect("/admin");
+  const { author } = await ownedLead(id);
 
   const deadline = raw ? new Date(raw) : null;
   if (raw && Number.isNaN(deadline!.getTime())) redirect(`/admin/leads/${id}?error=baddate`);
@@ -141,12 +146,10 @@ export async function setLeadDeadline(formData: FormData) {
 
 /** Record a client payment (down-payment / instalment). Increments the paid amount. */
 export async function recordPayment(formData: FormData) {
-  const author = await actor();
   const id = String(formData.get("id") || "");
   const amount = round2(parseFloat(String(formData.get("amount") || "0")) || 0);
 
-  const lead = await prisma.lead.findUnique({ where: { id } });
-  if (!lead) redirect("/admin");
+  const { lead, author } = await ownedLead(id);
   if (amount === 0) redirect(`/admin/leads/${id}?error=badamount`);
 
   const paid = round2(Math.max(0, lead.paid + amount));
@@ -162,11 +165,9 @@ export async function recordPayment(formData: FormData) {
 
 /** Manager-triggered: regenerate the PDF from the current offer and email it to the client. */
 export async function resendOffer(formData: FormData) {
-  const author = await actor();
   const id = String(formData.get("id") || "");
 
-  const lead = await prisma.lead.findUnique({ where: { id } });
-  if (!lead) redirect("/admin");
+  const { lead, author } = await ownedLead(id);
 
   let snap: OfferSnapshot;
   try {
@@ -197,4 +198,49 @@ export async function resendOffer(formData: FormData) {
   revalidatePath(`/admin/leads/${id}`);
   revalidatePath("/admin");
   redirect(`/admin/leads/${id}?${mail.ok ? "ok=resent" : "error=emailfailed"}`);
+}
+
+/** Edit the customer details of a lead (also updated inside the stored offer snapshot). */
+export async function updateLeadCustomer(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const { lead, author } = await ownedLead(id);
+
+  const v = (k: string) => String(formData.get(k) || "").trim();
+  const customer = {
+    firstName: v("firstName"),
+    lastName: v("lastName"),
+    email: v("email"),
+    phone: v("phone"),
+    company: v("company"),
+    deliveryAddress: v("deliveryAddress"),
+    regNumber: v("regNumber"),
+    note: v("note"),
+  };
+  if (!customer.firstName || !customer.lastName || !customer.email) {
+    redirect(`/admin/leads/${id}?error=custinvalid`);
+  }
+
+  // Keep the offer snapshot's customer block in sync so the PDF/email reflect the edit.
+  let snap: any = {};
+  try { snap = JSON.parse(lead.snapshot); } catch {}
+  if (snap && typeof snap === "object") snap.customer = { ...(snap.customer || {}), ...customer };
+
+  await prisma.lead.update({
+    where: { id },
+    data: {
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      email: customer.email,
+      phone: customer.phone,
+      company: customer.company,
+      deliveryAddress: customer.deliveryAddress,
+      regNumber: customer.regNumber,
+      assignedTo: author,
+      snapshot: JSON.stringify(snap),
+    },
+  });
+  await logEvent(id, "modified", `Customer details updated.`, author);
+  revalidatePath(`/admin/leads/${id}`);
+  revalidatePath("/admin");
+  redirect(`/admin/leads/${id}?ok=customer`);
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireContentEditor } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { money } from "@/lib/format";
 import { deleteRobot, duplicateRobot } from "../../actions";
@@ -6,6 +7,7 @@ import { deleteRobot, duplicateRobot } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function RobotsList() {
+  await requireContentEditor();
   const robots = await prisma.robot.findMany({ orderBy: { order: "asc" } });
   return (
     <div>

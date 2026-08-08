@@ -4,21 +4,22 @@ import { getSessionUser } from "@/lib/auth";
 import { logoutAction } from "../auth-actions";
 import AdminMobileNav from "@/components/AdminMobileNav";
 
-const nav = [
+const nav: { href: string; label: string; roles?: string[] }[] = [
   { href: "/admin", label: "Dashboard" },
-  { href: "/admin/packages", label: "Milling packs" },
-  { href: "/admin/robots", label: "Robots" },
-  { href: "/admin/groups", label: "Option groups" },
-  { href: "/admin/projects", label: "Carousel projects" },
-  { href: "/admin/settings", label: "Settings", adminOnly: true },
-  { href: "/admin/users", label: "Users", adminOnly: true },
+  { href: "/admin/leads/new", label: "+ New lead" },
+  { href: "/admin/packages", label: "Milling packs", roles: ["ADMIN", "MANAGER"] },
+  { href: "/admin/robots", label: "Robots", roles: ["ADMIN", "MANAGER"] },
+  { href: "/admin/groups", label: "Option groups", roles: ["ADMIN", "MANAGER"] },
+  { href: "/admin/projects", label: "Carousel projects", roles: ["ADMIN", "MANAGER"] },
+  { href: "/admin/settings", label: "Settings", roles: ["ADMIN"] },
+  { href: "/admin/users", label: "Users", roles: ["ADMIN"] },
   { href: "/admin/account", label: "My account" },
 ];
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   if (!user) redirect("/admin/login");
-  const items = nav.filter((n) => !n.adminOnly || user.role === "ADMIN");
+  const items = nav.filter((n) => !n.roles || n.roles.includes(user.role));
 
   return (
     <div className="flex min-h-screen">

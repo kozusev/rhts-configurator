@@ -70,7 +70,8 @@ export default async function UsersPage({
           <div>
             <label className="label">Role</label>
             <select name="role" className="field" defaultValue="MANAGER">
-              <option value="MANAGER">Manager — edit site content</option>
+              <option value="AGENT">Agent — only their own leads</option>
+              <option value="MANAGER">Manager — edit site content + all leads</option>
               <option value="ADMIN">Admin — full access</option>
             </select>
           </div>
@@ -104,6 +105,7 @@ export default async function UsersPage({
                 <form action={updateUserRole} className="flex items-center gap-1">
                   <input type="hidden" name="id" value={u.id} />
                   <select name="role" defaultValue={u.role} className="field !w-auto !py-1.5 text-xs">
+                    <option value="AGENT">Agent</option>
                     <option value="MANAGER">Manager</option>
                     <option value="ADMIN">Admin</option>
                   </select>
