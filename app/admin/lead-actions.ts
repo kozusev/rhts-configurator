@@ -185,9 +185,16 @@ export async function resendOffer(formData: FormData) {
     where: { id },
     data: { emailStatus: mail.mode, assignedTo: author, snapshot: JSON.stringify(snap) },
   });
-  await logEvent(id, "email", `Offer re-sent to ${snap.customer.email} (${mail.mode}).`, author);
+  await logEvent(
+    id,
+    "email",
+    mail.ok
+      ? `Offer re-sent to ${snap.customer.email} (${mail.mode}).`
+      : `Email send FAILED to ${snap.customer.email}: ${mail.detail || "unknown error"}`,
+    author
+  );
 
   revalidatePath(`/admin/leads/${id}`);
   revalidatePath("/admin");
-  redirect(`/admin/leads/${id}?ok=resent`);
+  redirect(`/admin/leads/${id}?${mail.ok ? "ok=resent" : "error=emailfailed"}`);
 }

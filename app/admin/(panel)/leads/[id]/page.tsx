@@ -16,6 +16,7 @@ const FLASH: Record<string, string> = {
   discount: "Discount applied. Use “Resend offer” to email it to the client.",
   modified: "Offer reconfigured. Use “Resend offer” to email it to the client.",
   resent: "Offer re-sent to the client.",
+  emailfailed: "Email could NOT be sent — check your SMTP settings. The offer is saved; see the activity log for the exact error.",
   deadline: "Deadline updated.",
   payment: "Payment recorded.",
   baddate: "Please enter a valid date.",
