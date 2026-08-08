@@ -16,6 +16,21 @@ async function actor(): Promise<string> {
   return me.email;
 }
 
+/** Permanently delete a lead — ADMIN only. Cascades its activity log. */
+export async function deleteLead(formData: FormData) {
+  const me = await getSessionUser();
+  if (!me) redirect("/admin/login");
+  const id = String(formData.get("id") || "");
+  if (me.role !== "ADMIN") redirect(`/admin/leads/${id}?error=forbidden`);
+
+  const lead = await prisma.lead.findUnique({ where: { id } });
+  if (!lead) redirect("/admin");
+
+  await prisma.lead.delete({ where: { id } }); // LeadEvent rows cascade
+  revalidatePath("/admin");
+  redirect("/admin?ok=leaddeleted");
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }

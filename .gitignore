@@ -7,10 +7,10 @@
 npm-debug.log*
 .env
 .env*.local
-/prisma/*.db
+# SQLite database IS committed (stored data), but its transient journal/wal files are not
 /prisma/*.db-journal
-/public/uploads/*
-!/public/uploads/.gitkeep
+/prisma/*.db-wal
+/prisma/*.db-shm
 next-env.d.ts
 
 # Generated offer emails/PDFs (contain customer data) and build cache

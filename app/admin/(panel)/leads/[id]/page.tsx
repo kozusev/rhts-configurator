@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { LEAD_STATUSES } from "@/lib/leadStatus";
 import StatusBadge from "@/components/StatusBadge";
+import DeleteLeadButton from "@/components/DeleteLeadButton";
 import { setLeadStatus, addLeadNote, applyLeadDiscount, resendOffer, setLeadDeadline, recordPayment } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ const FLASH: Record<string, string> = {
   payment: "Payment recorded.",
   baddate: "Please enter a valid date.",
   badamount: "Please enter a non-zero amount.",
+  forbidden: "Only admins can delete leads.",
   corrupt: "This offer's data is corrupt and could not be read.",
 };
 
@@ -207,6 +209,14 @@ export default async function LeadDetailPage({
               <button className="btn-ghost w-full !py-1.5 text-sm">Add note</button>
             </form>
           </div>
+
+          {me.role === "ADMIN" && (
+            <div className="card border-red-500/20 p-5">
+              <h2 className="mb-1 font-bold text-red-300">Danger zone</h2>
+              <p className="mb-3 text-xs text-slate-500">Permanently delete this lead and its history. Admins only.</p>
+              <DeleteLeadButton leadId={lead.id} offerNumber={lead.offerNumber} />
+            </div>
+          )}
         </div>
       </div>
     </div>
