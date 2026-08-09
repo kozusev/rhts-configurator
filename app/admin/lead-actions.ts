@@ -266,6 +266,25 @@ export async function setLeadLocale(formData: FormData) {
   redirect(`/admin/leads/${id}?ok=language`);
 }
 
+/** Link (or unlink) a lead to a CRM client. */
+export async function setLeadClient(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const clientId = String(formData.get("clientId") || "").trim();
+  const { author } = await ownedLead(id);
+
+  let label = "Unlinked from client.";
+  if (clientId) {
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { company: true } });
+    if (!client) redirect(`/admin/leads/${id}`);
+    label = `Linked to client: ${client.company || clientId}.`;
+  }
+
+  await prisma.lead.update({ where: { id }, data: { clientId: clientId || null, assignedTo: author } });
+  await logEvent(id, "modified", label, author);
+  revalidatePath(`/admin/leads/${id}`);
+  redirect(`/admin/leads/${id}?ok=client`);
+}
+
 export async function addLeadNote(formData: FormData) {
   const id = String(formData.get("id") || "");
   const message = String(formData.get("note") || "").trim();

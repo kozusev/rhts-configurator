@@ -6,6 +6,7 @@ import AdminMobileNav from "@/components/AdminMobileNav";
 
 const nav: { href: string; label: string; roles?: string[] }[] = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/clients", label: "Clients", roles: ["ADMIN", "MANAGER"] },
   { href: "/admin/packages", label: "Milling packs", roles: ["ADMIN", "MANAGER"] },
   { href: "/admin/robots", label: "Robots", roles: ["ADMIN", "MANAGER"] },
   { href: "/admin/groups", label: "Option groups", roles: ["ADMIN", "MANAGER"] },

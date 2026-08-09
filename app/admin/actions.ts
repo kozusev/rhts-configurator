@@ -191,6 +191,38 @@ export async function saveBom(fd: FormData) {
   revalidatePath(returnTo);
 }
 
+// ---------------- Clients (CRM) ----------------
+export async function saveClient(fd: FormData) {
+  await assertContentEditor();
+  const id = str(fd, "id");
+  const data = {
+    company: str(fd, "company"),
+    country: str(fd, "country"),
+    contactPerson: str(fd, "contactPerson"),
+    email: str(fd, "email"),
+    phone: str(fd, "phone"),
+    locale: str(fd, "locale", "en"),
+    hasVat: bool(fd, "hasVat"),
+    vatNumber: str(fd, "vatNumber"),
+    note: str(fd, "note"),
+  };
+  if (id) await prisma.client.update({ where: { id }, data });
+  else await prisma.client.create({ data });
+  revalidatePath("/admin/clients");
+  redirect("/admin/clients");
+}
+
+export async function deleteClient(fd: FormData) {
+  await assertContentEditor();
+  const id = str(fd, "id");
+  // Block deletion while the client still has linked leads.
+  const count = await prisma.lead.count({ where: { clientId: id } });
+  if (count > 0) redirect("/admin/clients?error=hasleads");
+  await prisma.client.delete({ where: { id } });
+  revalidatePath("/admin/clients");
+  redirect("/admin/clients?ok=deleted");
+}
+
 // ---------------- Option groups ----------------
 export async function saveGroup(fd: FormData) {
   await assertContentEditor();

@@ -106,10 +106,31 @@ model PackageOptionGroup {
   @@id([packageId, groupId])
 }
 
+/// A customer company in the CRM. Leads can be linked to a client; a client that has
+/// linked leads cannot be deleted.
+model Client {
+  id            String   @id @default(cuid())
+  company       String   @default("")
+  country       String   @default("")
+  contactPerson String   @default("")
+  email         String   @default("")
+  phone         String   @default("")
+  locale        String   @default("en")    // communication language
+  hasVat        Boolean  @default(false)    // works with VAT
+  vatNumber     String   @default("")
+  note          String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  leads         Lead[]
+}
+
 /// A submitted configuration / offer request.
 model Lead {
   id          String   @id @default(cuid())
   offerNumber String   @unique
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id])
   firstName   String
   lastName    String
   email       String

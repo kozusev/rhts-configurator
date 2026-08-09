@@ -13,7 +13,7 @@ import LeadAttachments from "@/components/LeadAttachments";
 import { listTemplatesSafe, listNotifyTemplatesMerged, statusActionKey } from "@/lib/templates";
 import { getBomTotal } from "@/lib/bom";
 import { locales, localeNames } from "@/lib/i18n";
-import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment, setLeadLocale } from "../../../lead-actions";
+import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment, setLeadLocale, setLeadClient } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +32,7 @@ const FLASH: Record<string, string> = {
   deadline: "Deadline updated.",
   payment: "Payment recorded.",
   language: "Communication language updated. The PDF and emails will use it.",
+  client: "Client link updated.",
   baddate: "Please enter a valid date.",
   badamount: "Please enter a non-zero amount.",
   forbidden: "Only admins can delete leads.",
@@ -75,6 +76,9 @@ export default async function LeadDetailPage({
   });
   const documents = attachments.filter((a) => a.kind !== "backup");
   const backups = attachments.filter((a) => a.kind === "backup");
+
+  // CRM clients for the link selector (small table; load all).
+  const clients = await prisma.client.findMany({ orderBy: { company: "asc" }, select: { id: true, company: true } });
 
   let snap: any = {};
   try { snap = JSON.parse(lead.snapshot); } catch {}
@@ -334,6 +338,24 @@ export default async function LeadDetailPage({
               />
               <p className="mt-2 text-xs text-slate-500">Email the client a status update. Nothing is sent until you do.</p>
             </div>
+          </div>
+          )}
+
+          {canModify && (
+          <div className="card p-5">
+            <h2 className="mb-1 font-bold">Client</h2>
+            <p className="mb-3 text-xs text-slate-500">Link this lead to a client in the CRM.</p>
+            <form action={setLeadClient} className="flex gap-2">
+              <input type="hidden" name="id" value={lead.id} />
+              <select name="clientId" defaultValue={lead.clientId || ""} className="field !py-1.5 text-sm">
+                <option value="">— No client —</option>
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.company || c.id}</option>)}
+              </select>
+              <button className="btn-ghost !px-3 !py-1.5 text-sm">Save</button>
+            </form>
+            <p className="mt-2 text-xs text-slate-500">
+              <Link href="/admin/clients" className="text-brand-300 hover:text-brand-200">Manage clients →</Link>
+            </p>
           </div>
           )}
 
