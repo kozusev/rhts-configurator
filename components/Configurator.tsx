@@ -63,6 +63,9 @@ export default function Configurator({
 }) {
   // Customer form shows on the public site and in admin "create lead" mode; hidden in "modify offer" mode.
   const customerVisible = showCustomerForm ?? !adminMode;
+  // On the public site the customer must provide contact details. A manager creating a
+  // lead in the admin panel can leave them blank and fill them in later.
+  const customerRequired = !adminMode;
   const [robotId, setRobotId] = useState<string>(initial?.robotId || "");
   // Quantity per option id. An option is "selected" when its quantity is >= 1.
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
@@ -144,7 +147,7 @@ export default function Configurator({
       setErrorMsg(labels.no_robot);
       return;
     }
-    if (!form.firstName || !form.lastName || !form.email || !form.phone) {
+    if (customerRequired && (!form.firstName || !form.lastName || !form.email || !form.phone)) {
       setErrorMsg(labels.required);
       return;
     }
@@ -354,19 +357,19 @@ export default function Configurator({
           <form onSubmit={submit} className="card space-y-4 p-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="label">{labels.first_name} *</label>
+                <label className="label">{labels.first_name}{customerRequired ? " *" : ""}</label>
                 <input className="field" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
               </div>
               <div>
-                <label className="label">{labels.last_name} *</label>
+                <label className="label">{labels.last_name}{customerRequired ? " *" : ""}</label>
                 <input className="field" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
               </div>
               <div>
-                <label className="label">{labels.email} *</label>
+                <label className="label">{labels.email}{customerRequired ? " *" : ""}</label>
                 <input type="email" className="field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div>
-                <label className="label">{labels.phone} *</label>
+                <label className="label">{labels.phone}{customerRequired ? " *" : ""}</label>
                 <input className="field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
               <div>

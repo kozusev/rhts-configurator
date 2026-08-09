@@ -8,20 +8,33 @@ import { getSessionUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const schema = z.object({
+const baseSchema = z.object({
   locale: z.string().refine(isLocale, "invalid locale"),
   packageId: z.string().min(1),
   robotId: z.string().min(1, "no robot"),
   optionIds: z.array(z.string()).default([]),
   optionQuantities: z.record(z.string(), z.number()).optional().default({}),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().min(3),
   company: z.string().optional().default(""),
   note: z.string().optional().default(""),
   deliveryAddress: z.string().optional().default(""),
   regNumber: z.string().optional().default(""),
+});
+
+// Public website leads must include the customer's contact details.
+const publicSchema = baseSchema.extend({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email(),
+  phone: z.string().min(3),
+});
+
+// Admin (manager) leads may omit customer details — the manager fills them in later.
+// An email, if given, must still be valid so "Resend offer" works.
+const adminSchema = baseSchema.extend({
+  firstName: z.string().optional().default(""),
+  lastName: z.string().optional().default(""),
+  email: z.string().email().or(z.literal("")).optional().default(""),
+  phone: z.string().optional().default(""),
 });
 
 export async function POST(req: NextRequest) {
@@ -32,16 +45,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const parsed = schema.safeParse(body);
+  // Authenticated submissions (from the admin "New lead" flow) record the creator and may
+  // omit customer details; anonymous submissions come from the public website (createdBy
+  // stays "") and must include the customer's contact details.
+  const me = await getSessionUser();
+  const createdBy = me?.email || "";
+
+  const parsed = (me ? adminSchema : publicSchema).safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid input" }, { status: 400 });
   }
 
   const input = parsed.data as OfferInput;
-  // Authenticated submissions (from the admin "New lead" flow) record the creator;
-  // anonymous submissions come from the public website (createdBy stays "").
-  const me = await getSessionUser();
-  const createdBy = me?.email || "";
 
   try {
     const prefix = await getSetting("offer_prefix", "RHTS");
