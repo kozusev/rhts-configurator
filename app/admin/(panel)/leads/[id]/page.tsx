@@ -10,6 +10,7 @@ import EditCustomerModal from "@/components/EditCustomerModal";
 import ResendOfferModal from "@/components/ResendOfferModal";
 import NotifyCustomerModal from "@/components/NotifyCustomerModal";
 import { listTemplatesSafe, listNotifyTemplatesMerged, statusActionKey } from "@/lib/templates";
+import { getBomTotal } from "@/lib/bom";
 import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
@@ -100,6 +101,27 @@ export default async function LeadDetailPage({
   const agentLocked = me.role === "AGENT" && lead.status === "closed"; // agents can't touch a closed lead
   const canModify = isManager || !agentLocked; // can change status / notes / modify / resend
   const canManageMoney = isManager; // discounts + payments: admin/manager only
+
+  // Internal cost & margin — computed from each product's bill of materials. ADMIN/MANAGER
+  // only; agents never see cost data. Costs are current BOM totals; the sale total is the lead's.
+  let costData: { cost: number; margin: number; marginPct: number; hasBom: boolean } | null = null;
+  if (isManager) {
+    const optionCosts = await Promise.all(
+      options.map((o: any) => (o?.id ? getBomTotal("option", o.id).then((c) => c * (o.qty || 1)) : Promise.resolve(0)))
+    );
+    const [pkgCost, robotCost] = await Promise.all([
+      getBomTotal("package", lead.packageId),
+      getBomTotal("robot", lead.robotId),
+    ]);
+    const cost = pkgCost + robotCost + optionCosts.reduce((a, b) => a + b, 0);
+    const margin = lead.total - cost;
+    costData = {
+      cost,
+      margin,
+      marginPct: lead.total > 0 ? (margin / lead.total) * 100 : 0,
+      hasBom: cost > 0,
+    };
+  }
 
   return (
     <div className="max-w-5xl">
@@ -222,6 +244,26 @@ export default async function LeadDetailPage({
             <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">
               🔒 This lead is <b>closed</b>. Only a manager or admin can modify it now.
             </div>
+          )}
+
+          {isManager && costData && (
+          <div className="card p-5">
+            <h2 className="mb-1 font-bold">Cost &amp; margin <span className="text-xs font-normal text-slate-500">— internal</span></h2>
+            <p className="mb-3 text-xs text-slate-500">From each product&apos;s bill of materials. Never shown to the customer.</p>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between text-slate-400"><span>Sale total</span><span>{money(lead.total, lead.currency)}</span></div>
+              <div className="flex justify-between text-amber-300"><span>Total cost</span><span>{money(costData.cost, lead.currency)}</span></div>
+              <div className="flex justify-between font-semibold">
+                <span>Margin</span>
+                <span className={costData.margin >= 0 ? "text-emerald-300" : "text-red-300"}>
+                  {money(costData.margin, lead.currency)} · {costData.marginPct.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            {!costData.hasBom && (
+              <p className="mt-2 text-xs text-slate-500">No bill of materials set for these products yet — add one on the pack / robot / option pages.</p>
+            )}
+          </div>
           )}
 
           {canModify && (
