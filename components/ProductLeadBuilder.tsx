@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createProductLead, updateProductLead } from "@/app/admin/lead-actions";
 import { money } from "@/lib/format";
+import { locales, localeNames } from "@/lib/i18n";
 
 type Line = { name: string; description: string; qty: number; unitPrice: number; unitCost: number };
 
@@ -13,15 +14,18 @@ export default function ProductLeadBuilder({
   mode = "create",
   leadId,
   defaultCurrency = "EUR",
+  defaultLocale = "en",
   initialLines,
 }: {
   mode?: "create" | "edit";
   leadId?: string;
   defaultCurrency?: string;
+  defaultLocale?: string;
   initialLines?: Line[];
 }) {
   const [lines, setLines] = useState<Line[]>(initialLines && initialLines.length ? initialLines : [emptyLine()]);
   const [currency, setCurrency] = useState(defaultCurrency);
+  const [locale, setLocale] = useState(defaultLocale);
 
   const total = lines.reduce((s, l) => s + (l.qty || 0) * (l.unitPrice || 0), 0);
   const totalCost = lines.reduce((s, l) => s + (l.qty || 0) * (l.unitCost || 0), 0);
@@ -38,6 +42,7 @@ export default function ProductLeadBuilder({
     <form action={mode === "edit" ? updateProductLead : createProductLead} className="space-y-8">
       <input type="hidden" name="lines" value={JSON.stringify(lines)} />
       <input type="hidden" name="currency" value={currency} />
+      {mode === "create" && <input type="hidden" name="locale" value={locale} />}
       {mode === "edit" && leadId && <input type="hidden" name="id" value={leadId} />}
 
       {/* Line items */}
@@ -121,6 +126,13 @@ export default function ProductLeadBuilder({
           <h2 className="mb-1 text-lg font-bold">Customer</h2>
           <p className="mb-4 text-xs text-slate-500">Optional — you can fill these in later on the lead page.</p>
           <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label">Communication language</label>
+              <select value={locale} onChange={(e) => setLocale(e.target.value)} className="field">
+                {locales.map((l) => <option key={l} value={l}>{localeNames[l]}</option>)}
+              </select>
+            </div>
+            <div className="hidden sm:block" />
             <div><label className="label">First name</label><input name="firstName" className="field" /></div>
             <div><label className="label">Last name</label><input name="lastName" className="field" /></div>
             <div><label className="label">Email</label><input name="email" type="email" className="field" /></div>

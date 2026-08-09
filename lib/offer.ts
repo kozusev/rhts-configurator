@@ -119,6 +119,7 @@ export type ProductLeadInput = {
   deliveryAddress?: string;
   regNumber?: string;
   currency?: string;
+  locale?: Locale;
   lines: ProductLine[];
 };
 
@@ -129,7 +130,7 @@ export type ProductLeadInput = {
  */
 export async function buildProductSnapshot(input: ProductLeadInput, offerNumber: string): Promise<OfferSnapshot> {
   const settings = await getSettings();
-  const locale: Locale = "en";
+  const locale: Locale = input.locale || "en";
   const currency = input.currency || "EUR";
 
   const options: OfferLineItem[] = input.lines.map((l) => {

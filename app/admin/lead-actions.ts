@@ -11,6 +11,7 @@ import { buildProductSnapshot, nextOfferNumber, type OfferSnapshot } from "@/lib
 import { LEAD_STATUSES } from "@/lib/leadStatus";
 import { offerVars, renderTemplate, bodyToHtml, getTemplateForAction, getTemplateForStatus, STATUS_EMAIL_STATUSES } from "@/lib/templates";
 import { money } from "@/lib/format";
+import { t, isLocale } from "@/lib/i18n";
 
 async function actor(): Promise<string> {
   const me = await getSessionUser();
@@ -89,13 +90,15 @@ export async function createProductLead(formData: FormData) {
   if (lines.length === 0) redirect("/admin/leads/new/product?error=nolines");
 
   const currency = v("currency") || "EUR";
+  const localeRaw = v("locale");
+  const locale = isLocale(localeRaw) ? localeRaw : "en";
   const prefix = await getSetting("offer_prefix", "RHTS");
   let offerNumber = await nextOfferNumber(prefix);
   const snapshot = await buildProductSnapshot(
     {
       firstName: v("firstName"), lastName: v("lastName"), email: v("email"), phone: v("phone"),
       company: v("company"), note: v("note"), deliveryAddress: v("deliveryAddress"), regNumber: v("regNumber"),
-      currency, lines,
+      currency, locale, lines,
     },
     offerNumber
   );
@@ -115,7 +118,7 @@ export async function createProductLead(formData: FormData) {
           regNumber: snapshot.customer.regNumber,
           createdBy: me.email,
           assignedTo: me.email,
-          locale: "en",
+          locale,
           packageId: "",
           robotId: "",
           optionIds: "[]",
@@ -210,6 +213,57 @@ export async function setLeadStatus(formData: FormData) {
   // Offer to email the customer, but only for customer-facing stages that have a template.
   const notify = changed && (STATUS_EMAIL_STATUSES as readonly string[]).includes(status) ? "&notify=status" : "";
   redirect(`/admin/leads/${id}?ok=status${notify}`);
+}
+
+/**
+ * Set the customer's communication language for a lead. Updates lead.locale and the
+ * snapshot's locale, and re-resolves translatable catalog text (pack/option names and
+ * descriptions) into the new language so the PDF and emails go out localized. Prices and
+ * quantities are untouched; free-form product/service lines stay as typed.
+ */
+export async function setLeadLocale(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const locale = String(formData.get("locale") || "");
+  if (!isLocale(locale)) redirect(`/admin/leads/${id}`);
+
+  const { lead, author } = await ownedLead(id);
+  if (lead.locale === locale) redirect(`/admin/leads/${id}`);
+
+  let snap: OfferSnapshot;
+  try {
+    snap = JSON.parse(lead.snapshot);
+  } catch {
+    // No snapshot to localize — just record the language on the lead.
+    await prisma.lead.update({ where: { id }, data: { locale } });
+    await logEvent(id, "modified", `Communication language set to ${locale.toUpperCase()}.`, author);
+    revalidatePath(`/admin/leads/${id}`);
+    redirect(`/admin/leads/${id}?ok=language`);
+  }
+
+  snap.locale = locale;
+
+  if (snap.package && lead.packageId) {
+    const pkg = await prisma.package.findUnique({ where: { id: lead.packageId } });
+    if (pkg) snap.package = { ...snap.package, name: t(pkg.name, locale), description: t(pkg.description, locale) };
+  }
+
+  const optionIds = (snap.options || []).map((o) => o.id).filter(Boolean) as string[];
+  if (optionIds.length) {
+    const opts = await prisma.option.findMany({ where: { id: { in: optionIds } } });
+    const byId = new Map(opts.map((o) => [o.id, o]));
+    snap.options = snap.options.map((o) => {
+      const src = o.id ? byId.get(o.id) : undefined;
+      return src ? { ...o, label: t(src.name, locale), sub: t(src.description, locale) } : o;
+    });
+  }
+
+  const settings = await getSettings();
+  snap.vatNote = t(settings.vat_note, locale);
+
+  await prisma.lead.update({ where: { id }, data: { locale, snapshot: JSON.stringify(snap) } });
+  await logEvent(id, "modified", `Communication language set to ${locale.toUpperCase()}.`, author);
+  revalidatePath(`/admin/leads/${id}`);
+  redirect(`/admin/leads/${id}?ok=language`);
 }
 
 export async function addLeadNote(formData: FormData) {

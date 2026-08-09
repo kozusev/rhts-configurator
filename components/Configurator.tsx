@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { money } from "@/lib/format";
-import { type Locale } from "@/lib/i18n";
+import { type Locale, locales, localeNames } from "@/lib/i18n";
 import CardCarousel from "./CardCarousel";
 
 export type RobotVM = {
@@ -85,6 +85,8 @@ export default function Configurator({
   });
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  // Client's communication language for the generated offer (admin create-lead flow).
+  const [clientLocale, setClientLocale] = useState<string>(locale);
   const [result, setResult] = useState<{ offerNumber: string; pdfUrl: string } | null>(null);
   const [pkgId, setPkgId] = useState<string>(pkg.id);
 
@@ -157,7 +159,7 @@ export default function Configurator({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          locale,
+          locale: adminMode ? clientLocale : locale,
           packageId: activePkg.id,
           robotId,
           optionIds: optionList.map((o) => o.id),
@@ -355,6 +357,14 @@ export default function Configurator({
         <section id="contact-form">
           <h2 className="mb-4 text-xl font-bold">{labels.step_contact}</h2>
           <form onSubmit={submit} className="card space-y-4 p-6">
+            {adminMode && (
+              <div className="sm:max-w-xs">
+                <label className="label">Communication language</label>
+                <select value={clientLocale} onChange={(e) => setClientLocale(e.target.value)} className="field">
+                  {locales.map((l) => <option key={l} value={l}>{localeNames[l]}</option>)}
+                </select>
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="label">{labels.first_name}{customerRequired ? " *" : ""}</label>

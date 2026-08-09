@@ -2,6 +2,7 @@ import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@
 import type { OfferSnapshot } from "./offer";
 import { money } from "./format";
 import { logoDataUri, imageForDoc } from "./images";
+import { dl } from "./docLabels";
 
 const RED = "#e4322b";
 const DARK = "#17181b";
@@ -82,7 +83,7 @@ function OfferDoc({
             {c.company_phone ? <Text style={styles.brandSub}>{c.company_phone}</Text> : null}
           </View>
           <View style={styles.offerBox}>
-            <Text style={styles.offerTitle}>OFFER</Text>
+            <Text style={styles.offerTitle}>{dl("offer", s.locale)}</Text>
             <Text style={styles.offerMeta}>{s.offerNumber}</Text>
             <Text style={styles.offerMeta}>{fmtDate(s.date)}</Text>
           </View>
@@ -92,28 +93,28 @@ function OfferDoc({
         <View style={styles.body}>
           <View style={[styles.section, styles.twoCol]}>
             <View style={styles.col}>
-              <Text style={styles.sectionTitle}>Prepared for</Text>
+              <Text style={styles.sectionTitle}>{dl("preparedFor", s.locale)}</Text>
               <Text style={styles.kv}>{s.customer.firstName} {s.customer.lastName}</Text>
               {s.customer.company ? <Text style={[styles.kv, styles.muted]}>{s.customer.company}</Text> : null}
-              {s.customer.regNumber ? <Text style={[styles.kv, styles.muted]}>Reg./VAT: {s.customer.regNumber}</Text> : null}
+              {s.customer.regNumber ? <Text style={[styles.kv, styles.muted]}>{dl("regVat", s.locale)}: {s.customer.regNumber}</Text> : null}
               <Text style={[styles.kv, styles.muted]}>{s.customer.email}</Text>
               <Text style={[styles.kv, styles.muted]}>{s.customer.phone}</Text>
-              {s.customer.deliveryAddress ? <Text style={[styles.kv, styles.muted]}>Delivery: {s.customer.deliveryAddress}</Text> : null}
+              {s.customer.deliveryAddress ? <Text style={[styles.kv, styles.muted]}>{dl("delivery", s.locale)}: {s.customer.deliveryAddress}</Text> : null}
             </View>
             <View style={styles.col}>
-              <Text style={styles.sectionTitle}>Validity</Text>
-              <Text style={[styles.kv, styles.muted]}>This offer is valid for {validity} days from the date above.</Text>
+              <Text style={styles.sectionTitle}>{dl("validity", s.locale)}</Text>
+              <Text style={[styles.kv, styles.muted]}>{dl("validityBody", s.locale, { days: String(validity) })}</Text>
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Configuration</Text>
+            <Text style={styles.sectionTitle}>{dl("configuration", s.locale)}</Text>
 
             {s.package ? (
               <View style={styles.row}>
                 <Thumb src={packageImage} />
                 <View style={styles.cellLabel}>
-                  <Text style={styles.cellName}>Milling pack — {s.package.name}</Text>
+                  <Text style={styles.cellName}>{dl("millingPack", s.locale)} — {s.package.name}</Text>
                   <Text style={styles.cellSub}>{s.package.spindle} · {s.package.toolHolder}</Text>
                   {s.package.description ? <Text style={[styles.cellSub, styles.packDesc]}>{s.package.description}</Text> : null}
                 </View>
@@ -125,7 +126,7 @@ function OfferDoc({
               <View style={styles.row}>
                 <Thumb src={robotImage} />
                 <View style={styles.cellLabel}>
-                  <Text style={styles.cellName}>Robot — {s.robot.label}</Text>
+                  <Text style={styles.cellName}>{dl("robot", s.locale)} — {s.robot.label}</Text>
                   <Text style={styles.cellSub}>{s.robot.specs}</Text>
                 </View>
                 <Text style={styles.cellPrice}>{money(s.robot.price, s.currency, s.locale)}</Text>
@@ -147,7 +148,7 @@ function OfferDoc({
             {s.discount && s.discount.amount > 0 ? (
               <>
                 <View style={styles.subRow}>
-                  <Text style={styles.subLabel}>Subtotal</Text>
+                  <Text style={styles.subLabel}>{dl("subtotal", s.locale)}</Text>
                   <Text style={styles.subValue}>{money(s.subtotal, s.currency, s.locale)}</Text>
                 </View>
                 <View style={styles.subRow}>
@@ -158,7 +159,7 @@ function OfferDoc({
             ) : null}
 
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>{s.discount && s.discount.amount > 0 ? "Total after discount" : "Estimated total"}</Text>
+              <Text style={styles.totalLabel}>{s.discount && s.discount.amount > 0 ? dl("totalAfterDiscount", s.locale) : dl("estimatedTotal", s.locale)}</Text>
               <Text style={styles.totalValue}>{money(s.total, s.currency, s.locale)}</Text>
             </View>
 
@@ -167,7 +168,7 @@ function OfferDoc({
 
           {s.customer.note ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Customer note</Text>
+              <Text style={styles.sectionTitle}>{dl("customerNote", s.locale)}</Text>
               <Text style={styles.muted}>{s.customer.note}</Text>
             </View>
           ) : null}

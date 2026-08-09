@@ -12,7 +12,8 @@ import NotifyCustomerModal from "@/components/NotifyCustomerModal";
 import LeadAttachments from "@/components/LeadAttachments";
 import { listTemplatesSafe, listNotifyTemplatesMerged, statusActionKey } from "@/lib/templates";
 import { getBomTotal } from "@/lib/bom";
-import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment } from "../../../lead-actions";
+import { locales, localeNames } from "@/lib/i18n";
+import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment, setLeadLocale } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ const FLASH: Record<string, string> = {
   emailfailed: "Email could NOT be sent — check your SMTP settings. The offer is saved; see the activity log for the exact error.",
   deadline: "Deadline updated.",
   payment: "Payment recorded.",
+  language: "Communication language updated. The PDF and emails will use it.",
   baddate: "Please enter a valid date.",
   badamount: "Please enter a non-zero amount.",
   forbidden: "Only admins can delete leads.",
@@ -332,6 +334,20 @@ export default async function LeadDetailPage({
               />
               <p className="mt-2 text-xs text-slate-500">Email the client a status update. Nothing is sent until you do.</p>
             </div>
+          </div>
+          )}
+
+          {canModify && (
+          <div className="card p-5">
+            <h2 className="mb-1 font-bold">Communication language</h2>
+            <p className="mb-3 text-xs text-slate-500">Used for the customer&apos;s PDF offer and emails.</p>
+            <form action={setLeadLocale} className="flex gap-2">
+              <input type="hidden" name="id" value={lead.id} />
+              <select name="locale" defaultValue={lead.locale} className="field !py-1.5 text-sm">
+                {locales.map((l) => <option key={l} value={l}>{localeNames[l]}</option>)}
+              </select>
+              <button className="btn-ghost !px-3 !py-1.5 text-sm">Save</button>
+            </form>
           </div>
           )}
 

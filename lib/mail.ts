@@ -4,6 +4,7 @@ import path from "path";
 import type { OfferSnapshot } from "./offer";
 import { money } from "./format";
 import { imageForDoc, logoDataUri } from "./images";
+import { dl } from "./docLabels";
 
 export type SendResult = { ok: boolean; mode: "sent" | "preview" | "failed"; detail?: string };
 
@@ -57,8 +58,8 @@ function offerEmailHtml(
   opts?: { discountIntro?: boolean; introHtml?: string }
 ): string {
   const rows: string[] = [];
-  if (s.package) rows.push(lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)));
-  if (s.robot) rows.push(lineRow(img(imgs.robot), `Robot — ${s.robot.label}`, s.robot.specs, money(s.robot.price, s.currency, s.locale)));
+  if (s.package) rows.push(lineRow(img(imgs.pkg), `${dl("millingPack", s.locale)} — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)));
+  if (s.robot) rows.push(lineRow(img(imgs.robot), `${dl("robot", s.locale)} — ${s.robot.label}`, s.robot.specs, money(s.robot.price, s.currency, s.locale)));
   s.options.forEach((o, i) => {
     const name = o.qty > 1 ? `${o.label} × ${o.qty}` : o.label;
     const sub = o.qty > 1 ? [o.sub, `${o.qty} × ${money(o.unitPrice, s.currency, s.locale)}`].filter(Boolean).join(" · ") : o.sub || "";
@@ -67,7 +68,7 @@ function offerEmailHtml(
 
   const hasDiscount = !!(s.discount && s.discount.amount > 0);
   const discountRows = hasDiscount
-    ? `<tr><td></td><td align="right" style="color:#64748b;padding:6px 0">Subtotal</td><td align="right" style="color:#64748b;padding:6px 0">${money(s.subtotal, s.currency, s.locale)}</td></tr>
+    ? `<tr><td></td><td align="right" style="color:#64748b;padding:6px 0">${dl("subtotal", s.locale)}</td><td align="right" style="color:#64748b;padding:6px 0">${money(s.subtotal, s.currency, s.locale)}</td></tr>
        <tr><td></td><td align="right" style="color:#15803d;font-weight:bold;padding:6px 0">${s.discount!.label}</td><td align="right" style="color:#15803d;font-weight:bold;padding:6px 0">− ${money(s.discount!.amount, s.currency, s.locale)}</td></tr>`
     : "";
 
@@ -83,16 +84,16 @@ function offerEmailHtml(
       <div style="padding:24px">
         ${opts?.introHtml
           ? opts.introHtml
-          : `<p>Dear ${s.customer.firstName} ${s.customer.lastName},</p>
+          : `<p>${dl("dear", s.locale)} ${s.customer.firstName} ${s.customer.lastName},</p>
              ${opts?.discountIntro && hasDiscount
-               ? `<p><b>We're happy to inform you that we've applied a special discount to your offer!</b></p>
-                  <p>Please find your updated configuration and revised total below — <b>${s.discount!.label}: − ${money(s.discount!.amount, s.currency, s.locale)}</b>. The full updated offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>`
-               : `<p>Thank you for your interest. Please find your configuration and estimated offer below. The full offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>`}`}
+               ? `<p><b>${dl("discountIntroBold", s.locale)}</b></p>
+                  <p>${dl("discountIntroBody", s.locale, { label: s.discount!.label, amount: money(s.discount!.amount, s.currency, s.locale), n: s.offerNumber })}</p>`
+               : `<p>${dl("offerIntro", s.locale, { n: s.offerNumber })}</p>`}`}
         <table style="width:100%;border-collapse:collapse" cellpadding="0">
           <tbody>${rows.join("")}${discountRows}</tbody>
           <tfoot><tr style="border-top:2px solid ${RED}">
             <td></td>
-            <td style="font-weight:bold;padding-top:10px">${hasDiscount ? "Total after discount" : "Estimated total"}</td>
+            <td style="font-weight:bold;padding-top:10px">${hasDiscount ? dl("totalAfterDiscount", s.locale) : dl("estimatedTotal", s.locale)}</td>
             <td align="right" style="font-weight:bold;color:${RED};padding-top:10px">${money(s.total, s.currency, s.locale)}</td>
           </tr></tfoot>
         </table>
@@ -197,7 +198,7 @@ export async function sendOfferEmails(
   const discountIntro = !!opts?.discountAnnouncement && !!(s.discount && s.discount.amount > 0);
   const customerSubject =
     opts?.customer?.subject ||
-    (discountIntro ? `Good news — a discount on your RHTS offer ${s.offerNumber}` : `Your RHTS offer ${s.offerNumber}`);
+    dl(discountIntro ? "subjectDiscount" : "subjectOffer", s.locale, { n: s.offerNumber });
   const customerIntro = opts?.customer?.introHtml;
   const adminSubjectDefault = `New lead — ${s.customer.firstName} ${s.customer.lastName} (${s.offerNumber})`;
   const adminSubject = opts?.admin?.subject || adminSubjectDefault;
