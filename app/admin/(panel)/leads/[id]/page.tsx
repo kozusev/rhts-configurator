@@ -13,7 +13,7 @@ import LeadAttachments from "@/components/LeadAttachments";
 import { listTemplatesSafe, listNotifyTemplatesMerged, statusActionKey } from "@/lib/templates";
 import { getBomTotal } from "@/lib/bom";
 import { locales, localeNames } from "@/lib/i18n";
-import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment, setLeadLocale, setLeadClient } from "../../../lead-actions";
+import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment, setLeadLocale, setLeadClient, createClientFromLead } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -353,6 +353,13 @@ export default async function LeadDetailPage({
               </select>
               <button className="btn-ghost !px-3 !py-1.5 text-sm">Save</button>
             </form>
+            {isManager && !lead.clientId && (
+              <form action={createClientFromLead} className="mt-3 border-t border-white/10 pt-3">
+                <input type="hidden" name="id" value={lead.id} />
+                <button className="btn-ghost w-full !py-1.5 text-sm">+ Create client from this lead</button>
+                <p className="mt-1 text-xs text-slate-500">Uses this lead&apos;s customer details, then links it.</p>
+              </form>
+            )}
             <p className="mt-2 text-xs text-slate-500">
               <Link href="/admin/clients" className="text-brand-300 hover:text-brand-200">Manage clients →</Link>
             </p>

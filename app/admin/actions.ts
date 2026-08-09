@@ -223,6 +223,48 @@ export async function deleteClient(fd: FormData) {
   redirect("/admin/clients?ok=deleted");
 }
 
+/**
+ * Merge several clients into one. The alphabetically-first selected client is kept; the
+ * others' leads are re-pointed to it, its empty fields are filled from the others, and the
+ * merged-away clients are deleted.
+ */
+export async function mergeClients(fd: FormData) {
+  await assertContentEditor();
+  const ids = fd.getAll("ids").map((v) => String(v)).filter(Boolean);
+  if (ids.length < 2) redirect("/admin/clients?error=mergecount");
+
+  const clients = await prisma.client.findMany({ where: { id: { in: ids } }, orderBy: { company: "asc" } });
+  if (clients.length < 2) redirect("/admin/clients?error=mergecount");
+
+  const primary = clients[0];
+  const others = clients.slice(1);
+  const otherIds = others.map((o) => o.id);
+
+  // Fill any empty field on the primary from the others (first non-empty wins).
+  const pick = (get: (c: (typeof clients)[number]) => string) =>
+    get(primary) || others.map(get).find((v) => v) || "";
+  const merged = {
+    company: pick((c) => c.company),
+    country: pick((c) => c.country),
+    contactPerson: pick((c) => c.contactPerson),
+    email: pick((c) => c.email),
+    phone: pick((c) => c.phone),
+    vatNumber: pick((c) => c.vatNumber),
+    hasVat: clients.some((c) => c.hasVat),
+    note: clients.map((c) => c.note).filter(Boolean).join("\n"),
+  };
+
+  await prisma.$transaction([
+    prisma.lead.updateMany({ where: { clientId: { in: otherIds } }, data: { clientId: primary.id } }),
+    prisma.client.update({ where: { id: primary.id }, data: merged }),
+    prisma.client.deleteMany({ where: { id: { in: otherIds } } }),
+  ]);
+
+  revalidatePath("/admin/clients");
+  revalidatePath("/admin");
+  redirect("/admin/clients?ok=merged");
+}
+
 // ---------------- Option groups ----------------
 export async function saveGroup(fd: FormData) {
   await assertContentEditor();

@@ -266,6 +266,35 @@ export async function setLeadLocale(formData: FormData) {
   redirect(`/admin/leads/${id}?ok=language`);
 }
 
+/** Create a CRM client from a lead's customer data and link the lead to it. Manager/admin only. */
+export async function createClientFromLead(formData: FormData) {
+  const me = await getSessionUser();
+  if (!me) redirect("/admin/login");
+  const id = String(formData.get("id") || "");
+  if (me.role !== "ADMIN" && me.role !== "MANAGER") redirect(`/admin/leads/${id}?error=forbidden`);
+
+  const lead = await prisma.lead.findUnique({ where: { id } });
+  if (!lead) redirect("/admin");
+
+  const contactPerson = `${lead.firstName} ${lead.lastName}`.trim();
+  const client = await prisma.client.create({
+    data: {
+      company: lead.company,
+      contactPerson,
+      email: lead.email,
+      phone: lead.phone,
+      locale: lead.locale,
+      vatNumber: lead.regNumber,
+      hasVat: !!lead.regNumber,
+    },
+  });
+  await prisma.lead.update({ where: { id }, data: { clientId: client.id } });
+  await logEvent(id, "modified", `Client created from lead: ${client.company || contactPerson || client.id}.`, me.email);
+  revalidatePath(`/admin/leads/${id}`);
+  revalidatePath("/admin/clients");
+  redirect(`/admin/clients/${client.id}`);
+}
+
 /** Link (or unlink) a lead to a CRM client. */
 export async function setLeadClient(formData: FormData) {
   const id = String(formData.get("id") || "");
