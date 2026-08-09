@@ -151,6 +151,18 @@ function buildInlineAttachments(imgs: EmailImages) {
   return { attachments, toCid };
 }
 
+/** Convert an inline image attachment to Resend's shape. `content_id` makes Resend render
+ *  it inline (referenced via cid: in the HTML) instead of embedding a data URI, which
+ *  Gmail and most webmail clients strip. */
+function resendInlineAttachment(a: InlineAttachment) {
+  return {
+    filename: a.filename,
+    content: a.content.toString("base64"),
+    content_type: a.contentType,
+    content_id: a.cid,
+  };
+}
+
 /** Send one email via Resend's HTTPS API (port 443 — not blocked by cloud hosts), with a hard timeout. */
 async function resendSend(apiKey: string, payload: Record<string, unknown>): Promise<void> {
   const ctrl = new AbortController();
@@ -222,15 +234,19 @@ export async function sendOfferEmails(
     process.env.RESEND_API_KEY || (/resend\.com$/i.test(host) ? process.env.SMTP_PASS || "" : "");
   if (resendKey) {
     try {
-      // Embed images as data URIs; the attached PDF also carries everything.
-      const asData = (src: string | null) => src;
-      const attachments = [{ filename: pdfAttachment.filename, content: pdfB64 }];
+      // Inline images via CID (content_id) so Gmail/Outlook render them — data URIs are
+      // stripped by most webmail clients. The attached PDF also carries everything.
+      const { attachments: inline, toCid } = buildInlineAttachments(imgs);
+      const attachments = [
+        { filename: pdfAttachment.filename, content: pdfB64 },
+        ...inline.map(resendInlineAttachment),
+      ];
       await resendSend(resendKey, {
         from,
         to: [s.customer.email],
         bcc: adminEmail ? [adminEmail] : undefined,
         subject: customerSubject,
-        html: offerEmailHtml(s, imgs, asData, { discountIntro, introHtml: customerIntro }),
+        html: offerEmailHtml(s, imgs, toCid, { discountIntro, introHtml: customerIntro }),
         attachments,
       });
       if (adminEmail) {
@@ -238,7 +254,7 @@ export async function sendOfferEmails(
           from,
           to: [adminEmail],
           subject: adminSubject,
-          html: adminNotifyHtml(s, imgs, asData, adminIntro),
+          html: adminNotifyHtml(s, imgs, toCid, adminIntro),
           attachments,
         });
       }
@@ -342,12 +358,15 @@ export async function sendCustomerMessage(
   const resendKey = process.env.RESEND_API_KEY || (/resend\.com$/i.test(host) ? process.env.SMTP_PASS || "" : "");
   if (resendKey) {
     try {
+      // Inline the logo via CID — data URIs are stripped by Gmail/Outlook.
+      const logoAtt = logo ? dataUriToAttachment(logo, "logo") : null;
       await resendSend(resendKey, {
         from,
         to: [s.customer.email],
         bcc: adminEmail ? [adminEmail] : undefined,
         subject: msg.subject,
-        html: simpleEmailHtml(s, msg.bodyHtml, logo),
+        html: simpleEmailHtml(s, msg.bodyHtml, logoAtt ? "cid:logo" : null),
+        attachments: logoAtt ? [resendInlineAttachment(logoAtt)] : undefined,
       });
       return { ok: true, mode: "sent" };
     } catch (e) {
