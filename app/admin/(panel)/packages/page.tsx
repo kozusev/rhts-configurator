@@ -3,6 +3,8 @@ import { requireContentEditor } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { money } from "@/lib/format";
+import { getBomTotalsMap } from "@/lib/bom";
+import BomCostLine from "@/components/admin/BomCostLine";
 import { deletePackage, duplicatePackage } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function Packageslist() {
   await requireContentEditor();
   const packages = await prisma.package.findMany({ orderBy: { order: "asc" } });
+  const costs = await getBomTotalsMap("package", packages.map((p) => p.id));
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -27,6 +30,7 @@ export default async function Packageslist() {
                 {!p.published && <span className="chip">hidden</span>}
               </div>
               <div className="text-xs text-slate-400">/{p.slug} · {p.power} · {money(p.basePrice, p.currency)}</div>
+              <BomCostLine cost={costs.get(p.id) || 0} salePrice={p.basePrice} currency={p.currency} />
               <div className="mt-3 flex gap-2">
                 <Link href={`/admin/packages/${p.id}`} className="btn-ghost !px-3 !py-1.5 text-xs">Edit</Link>
                 <form action={duplicatePackage}><input type="hidden" name="id" value={p.id} /><button className="btn-ghost !px-3 !py-1.5 text-xs">Copy</button></form>

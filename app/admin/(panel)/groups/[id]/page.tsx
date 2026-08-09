@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { money } from "@/lib/format";
+import { getBomTotalsMap } from "@/lib/bom";
 import { saveGroup, deleteOption, duplicateOption } from "../../../actions";
 import MultiLangField from "@/components/admin/MultiLangField";
+import BomCostLine from "@/components/admin/BomCostLine";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,7 @@ export default async function GroupDetail({ params }: { params: { id: string } }
         include: { options: { orderBy: { order: "asc" } } },
       });
   if (!isNew && !group) notFound();
+  const optionCosts = group ? await getBomTotalsMap("option", group.options.map((o) => o.id)) : new Map<string, number>();
 
   return (
     <div className="max-w-3xl">
@@ -52,6 +55,7 @@ export default async function GroupDetail({ params }: { params: { id: string } }
                   <div>
                     <div className="font-medium">{t(o.name, "en")} {!o.published && <span className="chip ml-1">hidden</span>}</div>
                     <div className="text-xs text-brand-300">+{money(o.price, o.currency)}</div>
+                    <BomCostLine cost={optionCosts.get(o.id) || 0} salePrice={o.price} currency={o.currency} />
                   </div>
                 </div>
                 <div className="flex gap-2">

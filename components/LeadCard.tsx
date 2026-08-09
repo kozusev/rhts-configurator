@@ -23,10 +23,14 @@ export type LeadRow = {
   createdAt: Date;
 };
 
-export default function LeadCard({ lead: l }: { lead: LeadRow }) {
+export default function LeadCard({ lead: l, cost }: { lead: LeadRow; cost?: number }) {
   let snap: any = {};
   try { snap = JSON.parse(l.snapshot); } catch {}
   const options: any[] = snap?.options || [];
+  // `cost` is passed only for ADMIN/MANAGER — agents never receive it, so the internal
+  // cost/margin line below simply doesn't render for them.
+  const margin = typeof cost === "number" ? l.total - cost : 0;
+  const marginPct = typeof cost === "number" && l.total > 0 ? (margin / l.total) * 100 : 0;
 
   // Short config summary: pack + robot + spindle + rotating table + linear axis (when present).
   const findOpt = (pred: (g: string) => boolean) =>
@@ -77,6 +81,22 @@ export default function LeadCard({ lead: l }: { lead: LeadRow }) {
               {p}
             </span>
           ))}
+        </div>
+      )}
+
+      {typeof cost === "number" && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/10 pt-2 text-xs">
+          <span className="text-slate-500">Internal:</span>
+          {cost > 0 ? (
+            <>
+              <span className="text-amber-300">cost {money(cost, l.currency)}</span>
+              <span className={margin >= 0 ? "text-emerald-300" : "text-red-300"}>
+                margin {money(margin, l.currency)} ({marginPct.toFixed(0)}%)
+              </span>
+            </>
+          ) : (
+            <span className="text-slate-500">no BOM cost set</span>
+          )}
         </div>
       )}
 

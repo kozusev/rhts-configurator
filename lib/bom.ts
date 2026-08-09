@@ -28,3 +28,59 @@ export async function getBomTotal(productType: BomProductType, productId: string
   });
   return bomTotal(lines);
 }
+
+/** Map of productId → total BOM cost for many products of one type, in a single query. */
+export async function getBomTotalsMap(productType: BomProductType, productIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  const ids = productIds.filter(Boolean);
+  if (ids.length === 0) return map;
+  const lines = await prisma.bomLine.findMany({
+    where: { productType, productId: { in: ids } },
+    select: { productId: true, qty: true, unitCost: true },
+  });
+  for (const l of lines) {
+    map.set(l.productId, (map.get(l.productId) || 0) + (l.qty || 0) * (l.unitCost || 0));
+  }
+  return map;
+}
+
+export type LeadForCost = { id: string; packageId: string; robotId: string; snapshot: string };
+
+/**
+ * Compute each lead's internal cost from the BOM of its pack, robot and options
+ * (option cost × quantity from the snapshot), in just three queries total.
+ */
+export async function getLeadCosts(leads: LeadForCost[]): Promise<Map<string, number>> {
+  const leadOptions = new Map<string, { id: string; qty: number }[]>();
+  const pkgIds: string[] = [];
+  const robotIds: string[] = [];
+  const optIds: string[] = [];
+
+  for (const l of leads) {
+    if (l.packageId) pkgIds.push(l.packageId);
+    if (l.robotId) robotIds.push(l.robotId);
+    let opts: { id: string; qty: number }[] = [];
+    try {
+      const snap = JSON.parse(l.snapshot);
+      opts = (snap?.options || [])
+        .filter((o: any) => o?.id)
+        .map((o: any) => ({ id: String(o.id), qty: o.qty || 1 }));
+    } catch {}
+    leadOptions.set(l.id, opts);
+    for (const o of opts) optIds.push(o.id);
+  }
+
+  const [pkgMap, robotMap, optMap] = await Promise.all([
+    getBomTotalsMap("package", pkgIds),
+    getBomTotalsMap("robot", robotIds),
+    getBomTotalsMap("option", optIds),
+  ]);
+
+  const result = new Map<string, number>();
+  for (const l of leads) {
+    let cost = (pkgMap.get(l.packageId) || 0) + (robotMap.get(l.robotId) || 0);
+    for (const o of leadOptions.get(l.id) || []) cost += (optMap.get(o.id) || 0) * o.qty;
+    result.set(l.id, cost);
+  }
+  return result;
+}

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { money } from "@/lib/format";
+import { getLeadCosts } from "@/lib/bom";
 import LeadCard from "@/components/LeadCard";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,10 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
   if (me.role === "AGENT") where.createdBy = me.email; // agents see only their own leads
 
   const leads = await prisma.lead.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
+
+  // Internal cost/margin per lead — ADMIN/MANAGER only; agents never receive cost data.
+  const isManager = me.role === "ADMIN" || me.role === "MANAGER";
+  const leadCosts = isManager ? await getLeadCosts(leads) : null;
 
   const sum = (arr: typeof leads) => arr.reduce((a, l) => a + l.total, 0);
   const inBucket = (statuses: readonly string[]) => leads.filter((l) => statuses.includes(l.status));
@@ -94,7 +99,7 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
       ) : (
         <div className="space-y-3">
           {leads.map((l) => (
-            <LeadCard key={l.id} lead={l} />
+            <LeadCard key={l.id} lead={l} cost={leadCosts?.get(l.id)} />
           ))}
         </div>
       )}
