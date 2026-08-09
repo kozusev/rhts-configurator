@@ -164,8 +164,8 @@ export default function Configurator({
       if (!res.ok) throw new Error((await res.json()).error || "Failed");
       const data = await res.json();
       if (adminMode) {
-        // Modify mode → back to the lead; create mode → the newly created lead.
-        const dest = returnTo ? `${returnTo}?ok=modified` : data.leadUrl ? `${data.leadUrl}?ok=created` : "/admin";
+        // Modify mode → back to the lead (offer to email the updated offer); create mode → the new lead.
+        const dest = returnTo ? `${returnTo}?ok=modified&notify=offer` : data.leadUrl ? `${data.leadUrl}?ok=created` : "/admin";
         window.location.href = dest;
         return;
       }

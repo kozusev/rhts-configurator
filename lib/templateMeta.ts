@@ -32,15 +32,23 @@ export const statusActionKey = (status: string) => `status:${status}`;
 export const isStatusAction = (action: string) => action.startsWith("status:");
 export const statusFromAction = (action: string) => (isStatusAction(action) ? action.slice("status:".length) : "");
 
+/** Non-status, non-offer customer messages (e.g. payment receipt). */
+export const OTHER_ACTIONS: { key: string; label: string }[] = [
+  { key: "payment", label: "Payment received" },
+];
+
 export function actionLabel(action: string): string {
   if (!action) return "";
   if (isStatusAction(action)) return `${statusMeta(statusFromAction(action)).label} (status)`;
+  const other = OTHER_ACTIONS.find((a) => a.key === action);
+  if (other) return other.label;
   return TEMPLATE_ACTIONS.find((a) => a.key === action)?.label || "";
 }
 
 /** True if `action` is a valid, assignable action string. */
 export function isValidTemplateAction(action: string): boolean {
   if (action === "" || action === "offer" || action === "discount" || action === "admin_notify") return true;
+  if (OTHER_ACTIONS.some((a) => a.key === action)) return true;
   if (isStatusAction(action)) return (LEAD_STATUSES as readonly string[]).includes(statusFromAction(action));
   return false;
 }
@@ -52,6 +60,7 @@ export const ACTION_OPTION_GROUPS: { label: string; options: { value: string; la
     label: "Order-status emails",
     options: STATUS_EMAIL_STATUSES.map((s) => ({ value: statusActionKey(s), label: statusMeta(s).label })),
   },
+  { label: "Payments", options: OTHER_ACTIONS.map((a) => ({ value: a.key, label: a.label })) },
 ];
 
 /** Placeholders the manager can drop into a subject/body. */
@@ -69,6 +78,8 @@ export const PLACEHOLDERS: { token: string; desc: string }[] = [
   { token: "{{phone}}", desc: "Customer phone" },
   { token: "{{email}}", desc: "Customer email" },
   { token: "{{validityDays}}", desc: "Offer validity (days)" },
+  { token: "{{paid}}", desc: "Amount paid so far" },
+  { token: "{{balance}}", desc: "Balance still due" },
 ];
 
 /** Built-in offer templates — seeded to the DB and used as a fallback. */
@@ -167,6 +178,17 @@ export const DEFAULT_STATUS_TEMPLATES: Record<string, TemplateShape> = {
   },
 };
 
+/** Built-in template for the "payment received" customer receipt. */
+export const DEFAULT_PAYMENT_TEMPLATE: TemplateShape = {
+  name: "Payment received",
+  subject: "Payment received — order {{offerNumber}}",
+  body:
+    "Dear {{fullName}},\n\n" +
+    "Thank you — we've received your payment for order № {{offerNumber}}.\n\n" +
+    "**Paid so far: {{paid}}** · Balance due: {{balance}}.\n\n" +
+    "We'll keep you updated as your order progresses.",
+};
+
 /** Replace every {{token}} in `text` with its value (unknown tokens become empty). */
 export function renderTemplate(text: string, vars: Record<string, string>): string {
   return (text || "").replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, k) => vars[k] ?? "");
@@ -203,6 +225,8 @@ export const SAMPLE_VARS: Record<string, string> = {
   phone: "+1 555 0100",
   email: "john@acme.com",
   validityDays: "30",
+  paid: "€40,000",
+  balance: "€80,000",
 };
 
 /** One-line preview of a template body, with sample values filled in and markdown stripped. */

@@ -9,7 +9,7 @@ import DeleteLeadButton from "@/components/DeleteLeadButton";
 import EditCustomerModal from "@/components/EditCustomerModal";
 import ResendOfferModal from "@/components/ResendOfferModal";
 import NotifyCustomerModal from "@/components/NotifyCustomerModal";
-import { listTemplatesSafe, listStatusTemplatesMerged } from "@/lib/templates";
+import { listTemplatesSafe, listNotifyTemplatesMerged, statusActionKey } from "@/lib/templates";
 import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
 const FLASH: Record<string, string> = {
   status: "Status updated.",
   note: "Note added.",
-  discount: "Discount applied. Use “Resend offer” to email it to the client.",
-  modified: "Offer reconfigured. Use “Resend offer” to email it to the client.",
+  discount: "Discount applied.",
+  modified: "Offer reconfigured.",
   resent: "Offer re-sent to the client.",
   notified: "Status update emailed to the client.",
   nomessage: "Nothing to send — pick a template or type a message.",
@@ -50,7 +50,7 @@ export default async function LeadDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { ok?: string; error?: string };
+  searchParams: { ok?: string; error?: string; notify?: string };
 }) {
   const me = await getSessionUser();
   if (!me) redirect("/admin/login");
@@ -68,7 +68,25 @@ export default async function LeadDetailPage({
   const options: any[] = snap?.options || [];
   const hasDiscount = snap?.discount && snap.discount.amount > 0;
   const templates = await listTemplatesSafe();
-  const statusTemplates = await listStatusTemplatesMerged();
+  const notifyTemplates = await listNotifyTemplatesMerged();
+
+  // A ?notify=… hint (set after a status/discount/payment/offer change) opens a confirm popup
+  // asking whether to email the customer. Offer-type changes use the offer popup (with PDF);
+  // status/payment use the simple-message popup.
+  const notify = searchParams.notify || "";
+  const resendPrompts: Record<string, string> = {
+    discount: "Discount applied. Email the updated offer to the customer?",
+    offer: "Offer updated. Email the revised offer to the customer?",
+  };
+  const notifyPrompts: Record<string, string> = {
+    status: "Status changed. Send the customer an update?",
+    payment: "Payment recorded. Email the customer a receipt?",
+  };
+  const autoOpenResend = notify === "discount" || notify === "offer";
+  const autoOpenNotify = notify === "status" || notify === "payment";
+  const resendDefaultAction: "offer" | "discount" =
+    notify === "discount" ? "discount" : notify === "offer" ? "offer" : hasDiscount ? "discount" : "offer";
+  const notifyPreselect = notify === "payment" ? "payment" : statusActionKey(lead.status);
   const flash = FLASH[searchParams.ok || ""] || FLASH[searchParams.error || ""];
   const flashOk = !!FLASH[searchParams.ok || ""];
 
@@ -104,7 +122,9 @@ export default async function LeadDetailPage({
               leadId={lead.id}
               recipient={lead.email}
               templates={templates}
-              defaultAction={hasDiscount ? "discount" : "offer"}
+              defaultAction={resendDefaultAction}
+              autoOpen={autoOpenResend}
+              prompt={resendPrompts[notify]}
             />
           )}
           {canModify && (
@@ -218,8 +238,10 @@ export default async function LeadDetailPage({
               <NotifyCustomerModal
                 leadId={lead.id}
                 recipient={lead.email}
-                templates={statusTemplates}
-                currentStatus={lead.status}
+                templates={notifyTemplates}
+                preselectAction={notifyPreselect}
+                autoOpen={autoOpenNotify}
+                prompt={notifyPrompts[notify]}
               />
               <p className="mt-2 text-xs text-slate-500">Email the client a status update. Nothing is sent until you do.</p>
             </div>

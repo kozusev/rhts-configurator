@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { resendOffer } from "@/app/admin/lead-actions";
 
 export type ResendTemplate = { id: string | null; name: string; action: string; subject: string; body: string };
@@ -16,13 +17,26 @@ export default function ResendOfferModal({
   recipient,
   templates,
   defaultAction,
+  autoOpen = false,
+  prompt,
 }: {
   leadId: string;
   recipient: string;
   templates: ResendTemplate[];
   defaultAction: "offer" | "discount";
+  autoOpen?: boolean;
+  prompt?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // When opened automatically from a ?notify= hint, clear the hint on dismiss so it doesn't
+  // reopen on refresh. (Sending redirects away on its own.)
+  function close() {
+    setOpen(false);
+    if (autoOpen) router.replace(pathname);
+  }
 
   // Offer messages only — exclude the internal admin notice and the order-status templates.
   const choices = templates.filter((t) => t.action !== "admin_notify" && !t.action.startsWith("status:"));
@@ -61,15 +75,18 @@ export default function ResendOfferModal({
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
+          onClick={close}
         >
           <div className="card mt-8 w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
             <div className="mb-1 flex items-center justify-between">
               <h3 className="text-lg font-bold">Resend offer</h3>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-xl text-slate-400 hover:text-white">
+              <button type="button" onClick={close} aria-label="Close" className="text-xl text-slate-400 hover:text-white">
                 ✕
               </button>
             </div>
+            {prompt && (
+              <p className="mb-3 rounded-lg border border-brand-500/30 bg-brand-500/10 px-3 py-2 text-sm text-brand-200">{prompt}</p>
+            )}
             <p className="mb-4 text-xs text-slate-400">
               The current PDF is regenerated and emailed to <b className="text-slate-200">{recipient}</b>.
             </p>
@@ -111,7 +128,7 @@ export default function ResendOfferModal({
 
               <div className="mt-1 flex gap-2">
                 <button className="btn-primary">Send offer</button>
-                <button type="button" onClick={() => setOpen(false)} className="btn-ghost">Cancel</button>
+                <button type="button" onClick={close} className="btn-ghost">{autoOpen ? "Don’t send" : "Cancel"}</button>
               </div>
             </form>
           </div>

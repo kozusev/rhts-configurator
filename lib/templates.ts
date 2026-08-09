@@ -6,6 +6,7 @@ import {
   STATUS_EMAIL_STATUSES,
   DEFAULT_TEMPLATES,
   DEFAULT_STATUS_TEMPLATES,
+  DEFAULT_PAYMENT_TEMPLATE,
   statusActionKey,
   type TemplateActionKey,
   type TemplateShape,
@@ -113,6 +114,29 @@ export async function listStatusTemplatesMerged(): Promise<ResolvedTemplate[]> {
 }
 
 /**
+ * Templates offered in the "Notify customer" popup: one per order status plus the
+ * payment-received receipt. DB rows override the built-in defaults; the full set is always
+ * returned so the popup works even before the templates are seeded.
+ */
+export async function listNotifyTemplatesMerged(): Promise<ResolvedTemplate[]> {
+  const status = await listStatusTemplatesMerged();
+  let paymentRow: { id: string; name: string; subject: string; body: string } | undefined;
+  try {
+    paymentRow = (await prisma.messageTemplate.findFirst({ where: { action: "payment" } })) || undefined;
+  } catch {
+    // no table yet — use default
+  }
+  const payment: ResolvedTemplate = {
+    id: paymentRow?.id ?? null,
+    name: paymentRow?.name ?? DEFAULT_PAYMENT_TEMPLATE.name,
+    action: "payment",
+    subject: paymentRow?.subject ?? DEFAULT_PAYMENT_TEMPLATE.subject,
+    body: paymentRow?.body ?? DEFAULT_PAYMENT_TEMPLATE.body,
+  };
+  return [...status, payment];
+}
+
+/**
  * Ensure the built-in templates (offer group + one per status) exist in the DB. Called when
  * the admin opens the templates page; only creates the ones that are missing, so it works on
  * both a fresh DB and one that already has the offer templates. Returns the current list, or
@@ -131,6 +155,7 @@ export async function ensureDefaultTemplates() {
       const action = statusActionKey(st);
       if (!haveAction.has(action)) toCreate.push({ ...DEFAULT_STATUS_TEMPLATES[st], action });
     }
+    if (!haveAction.has("payment")) toCreate.push({ ...DEFAULT_PAYMENT_TEMPLATE, action: "payment" });
     for (const data of toCreate) {
       await prisma.messageTemplate.create({ data: { name: data.name, subject: data.subject, body: data.body, action: data.action } });
     }

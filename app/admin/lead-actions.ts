@@ -9,7 +9,8 @@ import { renderOfferPdf } from "@/lib/pdf";
 import { sendOfferEmails, sendCustomerMessage } from "@/lib/mail";
 import type { OfferSnapshot } from "@/lib/offer";
 import { LEAD_STATUSES } from "@/lib/leadStatus";
-import { offerVars, renderTemplate, bodyToHtml, getTemplateForAction, getTemplateForStatus } from "@/lib/templates";
+import { offerVars, renderTemplate, bodyToHtml, getTemplateForAction, getTemplateForStatus, STATUS_EMAIL_STATUSES } from "@/lib/templates";
+import { money } from "@/lib/format";
 
 async function actor(): Promise<string> {
   const me = await getSessionUser();
@@ -68,13 +69,16 @@ export async function setLeadStatus(formData: FormData) {
   if (!LEAD_STATUSES.includes(status as any)) redirect(`/admin/leads/${id}`);
 
   const { lead, author } = await ownedLead(id);
-  if (lead.status !== status) {
+  const changed = lead.status !== status;
+  if (changed) {
     await prisma.lead.update({ where: { id }, data: { status, assignedTo: author } });
     await logEvent(id, "status", `Status: ${lead.status} → ${status}`, author);
   }
   revalidatePath(`/admin/leads/${id}`);
   revalidatePath("/admin");
-  redirect(`/admin/leads/${id}?ok=status`);
+  // Offer to email the customer, but only for customer-facing stages that have a template.
+  const notify = changed && (STATUS_EMAIL_STATUSES as readonly string[]).includes(status) ? "&notify=status" : "";
+  redirect(`/admin/leads/${id}?ok=status${notify}`);
 }
 
 export async function addLeadNote(formData: FormData) {
@@ -135,7 +139,8 @@ export async function applyLeadDiscount(formData: FormData) {
 
   revalidatePath(`/admin/leads/${id}`);
   revalidatePath("/admin");
-  redirect(`/admin/leads/${id}?ok=discount`);
+  // When a discount is applied, offer to resend the updated offer to the customer.
+  redirect(`/admin/leads/${id}?ok=discount${amount > 0 ? "&notify=discount" : ""}`);
 }
 
 export async function setLeadDeadline(formData: FormData) {
@@ -170,7 +175,8 @@ export async function recordPayment(formData: FormData) {
   await logEvent(id, "payment", `${label}. Paid ${paid} of ${lead.total} ${lead.currency} (balance ${balance}).`, author);
   revalidatePath(`/admin/leads/${id}`);
   revalidatePath("/admin");
-  redirect(`/admin/leads/${id}?ok=payment`);
+  // Offer to email a receipt to the customer for actual payments (not negative corrections).
+  redirect(`/admin/leads/${id}?ok=payment${amount > 0 ? "&notify=payment" : ""}`);
 }
 
 /**
@@ -260,7 +266,12 @@ export async function notifyLeadStatus(formData: FormData) {
   }
 
   snap.company = await getSettings();
-  const vars = offerVars(snap);
+  // Include payment figures so the payment-received template can use {{paid}} / {{balance}}.
+  const paidBalance = {
+    paid: money(lead.paid, lead.currency, snap.locale),
+    balance: money(Math.max(0, lead.total - lead.paid), lead.currency, snap.locale),
+  };
+  const vars = { ...offerVars(snap), ...paidBalance };
 
   let subjectRaw = String(formData.get("subject") || "").trim();
   let bodyRaw = String(formData.get("body") || "").trim();
@@ -286,8 +297,8 @@ export async function notifyLeadStatus(formData: FormData) {
     id,
     "email",
     mail.ok
-      ? `Status update emailed to ${snap.customer.email} (${mail.mode})${via}.`
-      : `Status email FAILED to ${snap.customer.email}: ${mail.detail || "unknown error"}`,
+      ? `Update emailed to ${snap.customer.email} (${mail.mode})${via}.`
+      : `Customer email FAILED to ${snap.customer.email}: ${mail.detail || "unknown error"}`,
     author
   );
 
