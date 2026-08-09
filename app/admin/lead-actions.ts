@@ -63,6 +63,21 @@ async function logEvent(leadId: string, type: string, message: string, author: s
   await prisma.leadEvent.create({ data: { leadId, type, message, author } });
 }
 
+/** Parse + clean the JSON line items submitted by the product/service lead builder. */
+function parseProductLines(formData: FormData) {
+  let rawLines: unknown = [];
+  try { rawLines = JSON.parse(String(formData.get("lines") || "[]")); } catch {}
+  return (Array.isArray(rawLines) ? rawLines : [])
+    .map((l: any) => ({
+      name: String(l?.name ?? "").trim(),
+      description: String(l?.description ?? "").trim(),
+      qty: Math.max(1, Math.round(Number(l?.qty) || 1)),
+      unitPrice: Number.isFinite(+l?.unitPrice) ? +l.unitPrice : 0,
+      unitCost: Number.isFinite(+l?.unitCost) ? +l.unitCost : 0,
+    }))
+    .filter((l) => l.name !== "" || l.unitPrice !== 0 || l.unitCost !== 0);
+}
+
 /** Create a free-form "Product / Service" lead from custom line items. */
 export async function createProductLead(formData: FormData) {
   const me = await getSessionUser();
@@ -70,17 +85,7 @@ export async function createProductLead(formData: FormData) {
 
   const v = (k: string) => String(formData.get(k) || "").trim();
 
-  let rawLines: unknown = [];
-  try { rawLines = JSON.parse(String(formData.get("lines") || "[]")); } catch {}
-  const lines = (Array.isArray(rawLines) ? rawLines : [])
-    .map((l: any) => ({
-      name: String(l?.name ?? "").trim(),
-      description: String(l?.description ?? "").trim(),
-      qty: Math.max(1, Math.round(Number(l?.qty) || 1)),
-      unitPrice: Number.isFinite(+l?.unitPrice) ? +l.unitPrice : 0,
-    }))
-    .filter((l) => l.name !== "" || l.unitPrice !== 0);
-
+  const lines = parseProductLines(formData);
   if (lines.length === 0) redirect("/admin/leads/new/product?error=nolines");
 
   const currency = v("currency") || "EUR";
@@ -136,6 +141,46 @@ export async function createProductLead(formData: FormData) {
   await logEvent(lead.id, "created", `Product/service lead created — ${lines.length} item(s). Total ${snapshot.total} ${snapshot.currency}.`, me.email);
   revalidatePath("/admin");
   redirect(`/admin/leads/${lead.id}?ok=created`);
+}
+
+/** Edit the line items of an existing product/service lead (add / edit / remove lines). */
+export async function updateProductLead(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const { lead, author } = await ownedLead(id);
+
+  let snap: OfferSnapshot;
+  try {
+    snap = JSON.parse(lead.snapshot);
+  } catch {
+    redirect(`/admin/leads/${id}?error=corrupt`);
+  }
+
+  const lines = parseProductLines(formData);
+  if (lines.length === 0) redirect(`/admin/leads/${id}/items?error=nolines`);
+
+  const currency = String(formData.get("currency") || "").trim() || snap.currency || lead.currency || "EUR";
+  const options = lines.map((l) => {
+    const qty = Math.max(1, Math.round(l.qty || 1));
+    return { label: l.name, sub: l.description || "", qty, unitPrice: l.unitPrice, price: l.unitPrice * qty, unitCost: l.unitCost || 0 };
+  });
+  const subtotal = round2(options.reduce((s, o) => s + o.price, 0));
+  const discountAmount = round2(Math.min(lead.discount || 0, subtotal));
+  const total = round2(subtotal - discountAmount);
+
+  snap.currency = currency;
+  snap.options = options;
+  snap.subtotal = subtotal;
+  snap.total = total;
+  if (snap.discount) snap.discount = { ...snap.discount, amount: discountAmount };
+
+  await prisma.lead.update({
+    where: { id },
+    data: { snapshot: JSON.stringify(snap), subtotal, total, discount: discountAmount, currency, assignedTo: author },
+  });
+  await logEvent(id, "modified", `Items updated — ${lines.length} item(s). New total ${total} ${currency}.`, author);
+  revalidatePath(`/admin/leads/${id}`);
+  revalidatePath("/admin");
+  redirect(`/admin/leads/${id}?ok=modified`);
 }
 
 /** Remove a lead attachment (document or software backup). Same access rules as the lead. */

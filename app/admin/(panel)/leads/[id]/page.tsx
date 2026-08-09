@@ -115,18 +115,23 @@ export default async function LeadDetailPage({
   const canModify = isManager || !agentLocked; // can change status / notes / modify / resend
   const canManageMoney = isManager; // discounts + payments: admin/manager only
 
-  // Internal cost & margin — computed from each product's bill of materials. ADMIN/MANAGER
-  // only; agents never see cost data. Costs are current BOM totals; the sale total is the lead's.
+  // Internal cost & margin — ADMIN/MANAGER only; agents never see cost data. Milling leads
+  // use each product's bill of materials; product/service leads use the per-line unit cost.
   let costData: { cost: number; margin: number; marginPct: number; hasBom: boolean } | null = null;
   if (isManager) {
-    const optionCosts = await Promise.all(
-      options.map((o: any) => (o?.id ? getBomTotal("option", o.id).then((c) => c * (o.qty || 1)) : Promise.resolve(0)))
-    );
-    const [pkgCost, robotCost] = await Promise.all([
-      getBomTotal("package", lead.packageId),
-      getBomTotal("robot", lead.robotId),
-    ]);
-    const cost = pkgCost + robotCost + optionCosts.reduce((a, b) => a + b, 0);
+    let cost = 0;
+    if (isProductLead) {
+      cost = options.reduce((s: number, o: any) => s + (Number(o.unitCost) || 0) * (o.qty || 1), 0);
+    } else {
+      const optionCosts = await Promise.all(
+        options.map((o: any) => (o?.id ? getBomTotal("option", o.id).then((c) => c * (o.qty || 1)) : Promise.resolve(0)))
+      );
+      const [pkgCost, robotCost] = await Promise.all([
+        getBomTotal("package", lead.packageId),
+        getBomTotal("robot", lead.robotId),
+      ]);
+      cost = pkgCost + robotCost + optionCosts.reduce((a, b) => a + b, 0);
+    }
     const margin = lead.total - cost;
     costData = {
       cost,
@@ -164,6 +169,9 @@ export default async function LeadDetailPage({
           )}
           {canModify && !isProductLead && (
             <Link href={`/admin/leads/${lead.id}/edit`} className="btn-primary !px-3 !py-1.5 text-sm">Modify offer →</Link>
+          )}
+          {canModify && isProductLead && (
+            <Link href={`/admin/leads/${lead.id}/items`} className="btn-primary !px-3 !py-1.5 text-sm">Modify items →</Link>
           )}
         </div>
       </div>
@@ -294,7 +302,11 @@ export default async function LeadDetailPage({
               </div>
             </div>
             {!costData.hasBom && (
-              <p className="mt-2 text-xs text-slate-500">No bill of materials set for these products yet — add one on the pack / robot / option pages.</p>
+              <p className="mt-2 text-xs text-slate-500">
+                {isProductLead
+                  ? "No cost set yet — add a unit cost to each item via “Modify items”."
+                  : "No bill of materials set for these products yet — add one on the pack / robot / option pages."}
+              </p>
             )}
           </div>
           )}

@@ -2,7 +2,7 @@ import { prisma } from "./db";
 import { t, type Locale } from "./i18n";
 import { getSettings } from "./settings";
 
-export type OfferLineItem = { id?: string; label: string; sub?: string; image?: string; qty: number; unitPrice: number; price: number; group?: string };
+export type OfferLineItem = { id?: string; label: string; sub?: string; image?: string; qty: number; unitPrice: number; price: number; group?: string; unitCost?: number };
 
 export type OfferDiscount = { label: string; amount: number };
 
@@ -107,7 +107,7 @@ export async function buildOfferSnapshot(input: OfferInput, offerNumber: string)
   };
 }
 
-export type ProductLine = { name: string; description?: string; qty: number; unitPrice: number };
+export type ProductLine = { name: string; description?: string; qty: number; unitPrice: number; unitCost?: number };
 
 export type ProductLeadInput = {
   firstName: string;
@@ -134,7 +134,7 @@ export async function buildProductSnapshot(input: ProductLeadInput, offerNumber:
 
   const options: OfferLineItem[] = input.lines.map((l) => {
     const qty = Math.max(1, Math.round(l.qty || 1));
-    return { label: l.name, sub: l.description || "", qty, unitPrice: l.unitPrice, price: l.unitPrice * qty };
+    return { label: l.name, sub: l.description || "", qty, unitPrice: l.unitPrice, price: l.unitPrice * qty, unitCost: l.unitCost || 0 };
   });
   const subtotal = options.reduce((s, o) => s + o.price, 0);
 

@@ -52,6 +52,8 @@ export type LeadForCost = { id: string; packageId: string; robotId: string; snap
  */
 export async function getLeadCosts(leads: LeadForCost[]): Promise<Map<string, number>> {
   const leadOptions = new Map<string, { id: string; qty: number }[]>();
+  // Product/service leads carry explicit per-line unit costs in their snapshot (no BOM).
+  const leadLineCost = new Map<string, number>();
   const pkgIds: string[] = [];
   const robotIds: string[] = [];
   const optIds: string[] = [];
@@ -60,13 +62,15 @@ export async function getLeadCosts(leads: LeadForCost[]): Promise<Map<string, nu
     if (l.packageId) pkgIds.push(l.packageId);
     if (l.robotId) robotIds.push(l.robotId);
     let opts: { id: string; qty: number }[] = [];
+    let lineCost = 0;
     try {
       const snap = JSON.parse(l.snapshot);
-      opts = (snap?.options || [])
-        .filter((o: any) => o?.id)
-        .map((o: any) => ({ id: String(o.id), qty: o.qty || 1 }));
+      const snapOpts = snap?.options || [];
+      opts = snapOpts.filter((o: any) => o?.id).map((o: any) => ({ id: String(o.id), qty: o.qty || 1 }));
+      lineCost = snapOpts.reduce((s: number, o: any) => s + (Number(o?.unitCost) || 0) * (o?.qty || 1), 0);
     } catch {}
     leadOptions.set(l.id, opts);
+    leadLineCost.set(l.id, lineCost);
     for (const o of opts) optIds.push(o.id);
   }
 
@@ -78,7 +82,7 @@ export async function getLeadCosts(leads: LeadForCost[]): Promise<Map<string, nu
 
   const result = new Map<string, number>();
   for (const l of leads) {
-    let cost = (pkgMap.get(l.packageId) || 0) + (robotMap.get(l.robotId) || 0);
+    let cost = (pkgMap.get(l.packageId) || 0) + (robotMap.get(l.robotId) || 0) + (leadLineCost.get(l.id) || 0);
     for (const o of leadOptions.get(l.id) || []) cost += (optMap.get(o.id) || 0) * o.qty;
     result.set(l.id, cost);
   }
