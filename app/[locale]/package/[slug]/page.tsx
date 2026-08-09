@@ -39,7 +39,7 @@ export default async function PackagePage({ params }: { params: { locale: Locale
   ]);
 
   const robotVMs: RobotVM[] = robots.map((r) => ({
-    id: r.id, brand: r.brand, model: r.model, year: r.year, armReach: r.armReach,
+    id: r.id, brand: r.brand, model: r.model, condition: r.condition, year: r.year, armReach: r.armReach,
     payload: r.payload, controller: r.controller, price: r.price, currency: r.currency, image: r.image,
   }));
 

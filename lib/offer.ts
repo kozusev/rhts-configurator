@@ -94,7 +94,7 @@ export async function buildOfferSnapshot(input: OfferInput, offerNumber: string)
       ? {
           label: `${robot.brand} ${robot.model}`,
           price: robot.price,
-          specs: `${robot.year} · ${robot.armReach} mm · ${robot.payload} kg · ${robot.controller}`,
+          specs: `${robot.condition === "used" ? "Used" : "New"} · ${robot.year} · ${robot.armReach} mm · ${robot.payload} kg · ${robot.controller}`,
           image: robot.image || "",
         }
       : null,

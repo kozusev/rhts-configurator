@@ -51,6 +51,7 @@ model Robot {
   id          String   @id @default(cuid())
   brand       String   @default("")
   model       String   @default("")
+  condition   String   @default("new") // "new" | "used"
   year        Int      @default(0)
   armReach    Int      @default(0)   // mm
   payload     Float    @default(0)   // kg

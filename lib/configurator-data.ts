@@ -4,7 +4,7 @@ import type { GroupVM, RobotVM, PackageVM, AdminPackageVM } from "@/components/C
 
 const LABEL_KEYS = [
   "step_robot", "step_options", "step_contact", "robot_year", "robot_reach", "robot_payload",
-  "robot_controller", "select", "selected", "add", "added", "summary", "base_pack", "robot",
+  "robot_controller", "cond_new", "cond_used", "select", "selected", "add", "added", "summary", "base_pack", "robot",
   "options", "total", "first_name", "last_name", "email", "phone", "company", "get_offer",
   "sending", "thanks_title", "thanks_body", "download_pdf", "required", "no_robot",
   "optional_note", "reg_number", "delivery_address",
@@ -26,7 +26,7 @@ export async function getConfiguratorData(packageId: string, locale: Locale) {
   ]);
 
   const robotVMs: RobotVM[] = robots.map((r) => ({
-    id: r.id, brand: r.brand, model: r.model, year: r.year, armReach: r.armReach,
+    id: r.id, brand: r.brand, model: r.model, condition: r.condition, year: r.year, armReach: r.armReach,
     payload: r.payload, controller: r.controller, price: r.price, currency: r.currency, image: r.image,
   }));
 
@@ -73,7 +73,7 @@ export async function getAdminConfiguratorData(locale: Locale) {
   }));
 
   const robotVMs: RobotVM[] = robots.map((r) => ({
-    id: r.id, brand: r.brand, model: r.model, year: r.year, armReach: r.armReach,
+    id: r.id, brand: r.brand, model: r.model, condition: r.condition, year: r.year, armReach: r.armReach,
     payload: r.payload, controller: r.controller, price: r.price, currency: r.currency, image: r.image,
   }));
 

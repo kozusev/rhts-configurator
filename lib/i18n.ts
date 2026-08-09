@@ -59,6 +59,8 @@ const dict: Dict = {
   robot_reach: { en: "Arm reach", es: "Alcance", uk: "Досяжність" },
   robot_payload: { en: "Payload", es: "Carga", uk: "Вантаж" },
   robot_controller: { en: "Controller", es: "Controlador", uk: "Контролер" },
+  cond_new: { en: "New", es: "Nuevo", uk: "Новий" },
+  cond_used: { en: "Used", es: "Usado", uk: "Вживаний" },
   select: { en: "Select", es: "Seleccionar", uk: "Обрати" },
   selected: { en: "Selected", es: "Seleccionado", uk: "Обрано" },
   add: { en: "Add", es: "Añadir", uk: "Додати" },

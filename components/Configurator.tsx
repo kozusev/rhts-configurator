@@ -9,6 +9,7 @@ export type RobotVM = {
   id: string;
   brand: string;
   model: string;
+  condition: string; // "new" | "used"
   year: number;
   armReach: number;
   payload: number;
@@ -242,6 +243,9 @@ export default function Configurator({
                   <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-lg">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={r.image} alt={r.model} className="absolute inset-0 h-full w-full object-cover" />
+                    <div className={`absolute left-2 top-2 chip ${r.condition === "used" ? "bg-amber-500 text-white" : "bg-emerald-500 text-white"}`}>
+                      {r.condition === "used" ? labels.cond_used : labels.cond_new}
+                    </div>
                     {active && <div className="absolute right-2 top-2 chip bg-brand-500 text-white">{labels.selected}</div>}
                   </div>
                   <div className="flex flex-1 flex-col">

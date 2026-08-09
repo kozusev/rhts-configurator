@@ -21,9 +21,14 @@ export default async function RobotsList() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {r.image && <img src={r.image} alt="" className="h-32 w-full object-cover" />}
             <div className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <h3 className="font-bold">{r.brand} {r.model}</h3>
-                {!r.published && <span className="chip">hidden</span>}
+                <div className="flex items-center gap-1">
+                  <span className={`chip ${r.condition === "used" ? "bg-amber-500/20 text-amber-300" : "bg-emerald-500/20 text-emerald-300"}`}>
+                    {r.condition === "used" ? "Used" : "New"}
+                  </span>
+                  {!r.published && <span className="chip">hidden</span>}
+                </div>
               </div>
               <div className="text-xs text-slate-400">{r.year} · {r.armReach} mm · {r.payload} kg · {r.controller}</div>
               <div className="mt-1 text-sm font-semibold text-brand-300">{money(r.price, r.currency)}</div>

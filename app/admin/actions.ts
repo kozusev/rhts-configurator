@@ -112,6 +112,7 @@ export async function saveRobot(fd: FormData) {
   const data = {
     brand: str(fd, "brand"),
     model: str(fd, "model"),
+    condition: str(fd, "condition", "new") === "used" ? "used" : "new",
     year: Math.round(num(fd, "year")),
     armReach: Math.round(num(fd, "armReach")),
     payload: num(fd, "payload"),
@@ -141,6 +142,7 @@ export async function duplicateRobot(fd: FormData) {
     data: {
       brand: r.brand,
       model: `${r.model} (copy)`,
+      condition: r.condition,
       year: r.year,
       armReach: r.armReach,
       payload: r.payload,

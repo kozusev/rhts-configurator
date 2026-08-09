@@ -24,6 +24,15 @@ export default async function EditRobot({ params }: { params: { id: string } }) 
           <div><label className="label">Brand</label><input name="brand" defaultValue={r?.brand || ""} className="field" required /></div>
           <div><label className="label">Model</label><input name="model" defaultValue={r?.model || ""} className="field" required /></div>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Condition</label>
+            <select name="condition" defaultValue={r?.condition === "used" ? "used" : "new"} className="field">
+              <option value="new">New</option>
+              <option value="used">Used</option>
+            </select>
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-4">
           <div><label className="label">Year</label><input name="year" type="number" defaultValue={r?.year ?? 2024} className="field" /></div>
           <div><label className="label">Arm reach (mm)</label><input name="armReach" type="number" defaultValue={r?.armReach ?? 0} className="field" /></div>
