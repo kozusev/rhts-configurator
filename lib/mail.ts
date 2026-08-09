@@ -54,7 +54,7 @@ function offerEmailHtml(
   s: OfferSnapshot,
   imgs: EmailImages,
   img: (src: string | null) => string | null,
-  opts?: { discountIntro?: boolean }
+  opts?: { discountIntro?: boolean; introHtml?: string }
 ): string {
   const rows: string[] = [];
   rows.push(lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)));
@@ -81,11 +81,13 @@ function offerEmailHtml(
       ${header}
       <div style="height:4px;background:${RED}"></div>
       <div style="padding:24px">
-        <p>Dear ${s.customer.firstName} ${s.customer.lastName},</p>
-        ${opts?.discountIntro && hasDiscount
-          ? `<p><b>We're happy to inform you that we've applied a special discount to your offer!</b></p>
-             <p>Please find your updated configuration and revised total below — <b>${s.discount!.label}: − ${money(s.discount!.amount, s.currency, s.locale)}</b>. The full updated offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>`
-          : `<p>Thank you for your interest. Please find your configuration and estimated offer below. The full offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>`}
+        ${opts?.introHtml
+          ? opts.introHtml
+          : `<p>Dear ${s.customer.firstName} ${s.customer.lastName},</p>
+             ${opts?.discountIntro && hasDiscount
+               ? `<p><b>We're happy to inform you that we've applied a special discount to your offer!</b></p>
+                  <p>Please find your updated configuration and revised total below — <b>${s.discount!.label}: − ${money(s.discount!.amount, s.currency, s.locale)}</b>. The full updated offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>`
+               : `<p>Thank you for your interest. Please find your configuration and estimated offer below. The full offer is attached as a PDF (№ <b>${s.offerNumber}</b>).</p>`}`}
         <table style="width:100%;border-collapse:collapse" cellpadding="0">
           <tbody>${rows.join("")}${discountRows}</tbody>
           <tfoot><tr style="border-top:2px solid ${RED}">
@@ -95,14 +97,13 @@ function offerEmailHtml(
           </tr></tfoot>
         </table>
         <p style="color:#64748b;font-size:12px">${s.vatNote || ""}</p>
-        <p>We will contact you shortly at ${s.customer.phone} or ${s.customer.email}.</p>
         <p style="color:#94a3b8;font-size:12px">${s.company.company_name || "RHTS"} · ${s.company.company_email || ""} · ${s.company.company_phone || ""}</p>
       </div>
     </div>
   </body></html>`;
 }
 
-function adminNotifyHtml(s: OfferSnapshot, imgs: EmailImages, img: (src: string | null) => string | null): string {
+function adminNotifyHtml(s: OfferSnapshot, imgs: EmailImages, img: (src: string | null) => string | null, introHtml?: string): string {
   const rows = [
     lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)),
     ...(s.robot ? [lineRow(img(imgs.robot), `Robot — ${s.robot.label}`, s.robot.specs, money(s.robot.price, s.currency, s.locale))] : []),
@@ -114,10 +115,14 @@ function adminNotifyHtml(s: OfferSnapshot, imgs: EmailImages, img: (src: string 
     ? `<p style="color:#15803d">${s.discount!.label}: − ${money(s.discount!.amount, s.currency, s.locale)} (subtotal ${money(s.subtotal, s.currency, s.locale)})</p>`
     : "";
 
+  const head = introHtml
+    ? introHtml
+    : `<h3 style="color:${RED}">New offer request — ${s.offerNumber}</h3>
+       <p><b>${s.customer.firstName} ${s.customer.lastName}</b> ${s.customer.company ? "(" + s.customer.company + ")" : ""}<br/>
+       ${s.customer.email} · ${s.customer.phone}</p>`;
+
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937">
-    <h3 style="color:${RED}">New offer request — ${s.offerNumber}</h3>
-    <p><b>${s.customer.firstName} ${s.customer.lastName}</b> ${s.customer.company ? "(" + s.customer.company + ")" : ""}<br/>
-    ${s.customer.email} · ${s.customer.phone}</p>
+    ${head}
     <table style="width:100%;max-width:600px;border-collapse:collapse"><tbody>${rows}</tbody></table>
     ${discountLine}
     <p style="margin-top:12px">Total: <b>${money(s.total, s.currency, s.locale)}</b></p>
@@ -169,10 +174,22 @@ async function resendSend(apiKey: string, payload: Record<string, unknown>): Pro
 export async function sendOfferEmails(
   s: OfferSnapshot,
   pdf: Buffer,
-  opts?: { discountAnnouncement?: boolean }
+  opts?: {
+    discountAnnouncement?: boolean;
+    /** Override the customer email's subject + intro (rendered from a message template). */
+    customer?: { subject: string; introHtml: string };
+    /** Override the admin notification's subject + intro (rendered from a message template). */
+    admin?: { subject: string; introHtml: string };
+  }
 ): Promise<SendResult> {
   const discountIntro = !!opts?.discountAnnouncement && !!(s.discount && s.discount.amount > 0);
-  const customerSubject = discountIntro ? `Good news — a discount on your RHTS offer ${s.offerNumber}` : `Your RHTS offer ${s.offerNumber}`;
+  const customerSubject =
+    opts?.customer?.subject ||
+    (discountIntro ? `Good news — a discount on your RHTS offer ${s.offerNumber}` : `Your RHTS offer ${s.offerNumber}`);
+  const customerIntro = opts?.customer?.introHtml;
+  const adminSubjectDefault = `New lead — ${s.customer.firstName} ${s.customer.lastName} (${s.offerNumber})`;
+  const adminSubject = opts?.admin?.subject || adminSubjectDefault;
+  const adminIntro = opts?.admin?.introHtml;
   const adminEmail = s.company.admin_email || "";
   const from = process.env.SMTP_FROM || s.company.company_email || "no-reply@rhts.local";
   const host = process.env.SMTP_HOST;
@@ -189,7 +206,7 @@ export async function sendOfferEmails(
       await fs.writeFile(path.join(dir, `${s.offerNumber}.pdf`), pdf);
       await fs.writeFile(
         path.join(dir, `${s.offerNumber}.html`),
-        `<h1>To customer: ${s.customer.email}</h1>${offerEmailHtml(s, imgs, asData, { discountIntro })}<hr/><h1>To admin: ${adminEmail}</h1>${adminNotifyHtml(s, imgs, asData)}`
+        `<h1>To customer: ${s.customer.email}</h1>${offerEmailHtml(s, imgs, asData, { discountIntro, introHtml: customerIntro })}<hr/><h1>To admin: ${adminEmail}</h1>${adminNotifyHtml(s, imgs, asData, adminIntro)}`
       );
       console.log(`[mail:preview] Offer ${s.offerNumber} → ${s.customer.email} (admin copy → ${adminEmail}). Saved to .mail-preview/`);
     } catch (e) {
@@ -213,15 +230,15 @@ export async function sendOfferEmails(
         to: [s.customer.email],
         bcc: adminEmail ? [adminEmail] : undefined,
         subject: customerSubject,
-        html: offerEmailHtml(s, imgs, asData, { discountIntro }),
+        html: offerEmailHtml(s, imgs, asData, { discountIntro, introHtml: customerIntro }),
         attachments,
       });
       if (adminEmail) {
         await resendSend(resendKey, {
           from,
           to: [adminEmail],
-          subject: `New lead — ${s.customer.firstName} ${s.customer.lastName} (${s.offerNumber})`,
-          html: adminNotifyHtml(s, imgs, asData),
+          subject: adminSubject,
+          html: adminNotifyHtml(s, imgs, asData, adminIntro),
           attachments,
         });
       }
@@ -253,7 +270,7 @@ export async function sendOfferEmails(
       to: s.customer.email,
       bcc: adminEmail || undefined,
       subject: customerSubject,
-      html: offerEmailHtml(s, imgs, toCid, { discountIntro }),
+      html: offerEmailHtml(s, imgs, toCid, { discountIntro, introHtml: customerIntro }),
       attachments: [pdfAttachment, ...inlineAttachments],
     });
 
@@ -261,8 +278,8 @@ export async function sendOfferEmails(
       await transporter.sendMail({
         from,
         to: adminEmail,
-        subject: `New lead — ${s.customer.firstName} ${s.customer.lastName} (${s.offerNumber})`,
-        html: adminNotifyHtml(s, imgs, toCid),
+        subject: adminSubject,
+        html: adminNotifyHtml(s, imgs, toCid, adminIntro),
         attachments: [pdfAttachment, ...inlineAttachments],
       });
     }

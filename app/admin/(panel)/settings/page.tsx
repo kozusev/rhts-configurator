@@ -14,8 +14,7 @@ export default async function SettingsPage() {
   const s = await getSettings();
   const emailConfigured = !!process.env.SMTP_HOST || !!process.env.RESEND_API_KEY;
   return (
-    <div className="max-w-3xl">
-      <h1 className="mb-6 text-2xl font-bold">Settings</h1>
+    <div>
       <form action={saveSettings} className="card space-y-5 p-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <div><label className="label">Company name</label><input name="company_name" defaultValue={s.company_name || ""} className="field" /></div>

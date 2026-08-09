@@ -9,6 +9,7 @@ import { renderOfferPdf } from "@/lib/pdf";
 import { sendOfferEmails } from "@/lib/mail";
 import type { OfferSnapshot } from "@/lib/offer";
 import { LEAD_STATUSES } from "@/lib/leadStatus";
+import { offerVars, renderTemplate, bodyToHtml, getTemplateForAction } from "@/lib/templates";
 
 async function actor(): Promise<string> {
   const me = await getSessionUser();
@@ -172,7 +173,13 @@ export async function recordPayment(formData: FormData) {
   redirect(`/admin/leads/${id}?ok=payment`);
 }
 
-/** Manager-triggered: regenerate the PDF from the current offer and email it to the client. */
+/**
+ * Manager-triggered: regenerate the PDF from the current offer and email it to the client.
+ * The manager chooses which message to send in the "Resend offer" popup — either a saved
+ * template or a one-off custom subject/body. Both may contain {{placeholders}}, filled from
+ * the lead here. If none is supplied (e.g. JS disabled), we fall back to the template
+ * assigned to the discount/offer action.
+ */
 export async function resendOffer(formData: FormData) {
   const id = String(formData.get("id") || "");
 
@@ -185,23 +192,47 @@ export async function resendOffer(formData: FormData) {
     redirect(`/admin/leads/${id}?error=corrupt`);
   }
 
-  // Refresh company info so the admin copy reaches the current admin_email.
+  // Refresh company info so placeholders + the admin copy reach the current settings.
   snap.company = await getSettings();
 
-  // If a discount is applied, the customer email announces the good news.
   const hasDiscount = !!(snap.discount && snap.discount.amount > 0);
+  const vars = offerVars(snap);
+
+  // The chosen message from the popup (may be empty when submitted without JS).
+  let subjectRaw = String(formData.get("subject") || "").trim();
+  let bodyRaw = String(formData.get("body") || "").trim();
+  const templateName = String(formData.get("templateName") || "").trim();
+  if (!subjectRaw || !bodyRaw) {
+    const fallback = await getTemplateForAction(hasDiscount ? "discount" : "offer");
+    subjectRaw = subjectRaw || fallback.subject;
+    bodyRaw = bodyRaw || fallback.body;
+  }
+
+  const customer = {
+    subject: renderTemplate(subjectRaw, vars),
+    introHtml: bodyToHtml(renderTemplate(bodyRaw, vars)),
+  };
+
+  // The internal admin notification uses its own assigned template.
+  const adminTpl = await getTemplateForAction("admin_notify");
+  const admin = {
+    subject: renderTemplate(adminTpl.subject, vars),
+    introHtml: bodyToHtml(renderTemplate(adminTpl.body, vars)),
+  };
+
   const pdf = await renderOfferPdf(snap);
-  const mail = await sendOfferEmails(snap, pdf, { discountAnnouncement: hasDiscount });
+  const mail = await sendOfferEmails(snap, pdf, { customer, admin });
 
   await prisma.lead.update({
     where: { id },
     data: { emailStatus: mail.mode, assignedTo: author, snapshot: JSON.stringify(snap) },
   });
+  const via = templateName ? ` using “${templateName}”` : " with a custom message";
   await logEvent(
     id,
     "email",
     mail.ok
-      ? `Offer re-sent to ${snap.customer.email} (${mail.mode}).`
+      ? `Offer re-sent to ${snap.customer.email} (${mail.mode})${via}.`
       : `Email send FAILED to ${snap.customer.email}: ${mail.detail || "unknown error"}`,
     author
   );

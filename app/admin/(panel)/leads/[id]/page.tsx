@@ -7,7 +7,9 @@ import { LEAD_STATUSES } from "@/lib/leadStatus";
 import StatusBadge from "@/components/StatusBadge";
 import DeleteLeadButton from "@/components/DeleteLeadButton";
 import EditCustomerModal from "@/components/EditCustomerModal";
-import { setLeadStatus, addLeadNote, applyLeadDiscount, resendOffer, setLeadDeadline, recordPayment } from "../../../lead-actions";
+import ResendOfferModal from "@/components/ResendOfferModal";
+import { listTemplatesSafe } from "@/lib/templates";
+import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +64,7 @@ export default async function LeadDetailPage({
   try { snap = JSON.parse(lead.snapshot); } catch {}
   const options: any[] = snap?.options || [];
   const hasDiscount = snap?.discount && snap.discount.amount > 0;
+  const templates = await listTemplatesSafe();
   const flash = FLASH[searchParams.ok || ""] || FLASH[searchParams.error || ""];
   const flashOk = !!FLASH[searchParams.ok || ""];
 
@@ -93,10 +96,12 @@ export default async function LeadDetailPage({
         <div className="flex flex-wrap gap-2">
           <a href={`/api/offer/${lead.offerNumber}/pdf`} target="_blank" rel="noopener noreferrer" className="btn-ghost !px-3 !py-1.5 text-sm">Open PDF</a>
           {canModify && (
-            <form action={resendOffer}>
-              <input type="hidden" name="id" value={lead.id} />
-              <button className="btn-ghost !px-3 !py-1.5 text-sm">✉️ Resend offer</button>
-            </form>
+            <ResendOfferModal
+              leadId={lead.id}
+              recipient={lead.email}
+              templates={templates}
+              defaultAction={hasDiscount ? "discount" : "offer"}
+            />
           )}
           {canModify && (
             <Link href={`/admin/leads/${lead.id}/edit`} className="btn-primary !px-3 !py-1.5 text-sm">Modify offer →</Link>

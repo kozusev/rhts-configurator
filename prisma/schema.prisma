@@ -155,6 +155,20 @@ model Setting {
   value String @default("")
 }
 
+/// An editable email message template used for the offer / discount / admin emails.
+/// `body` and `subject` may contain {{placeholders}} (see lib/templates.ts) that are
+/// filled in per-lead when the email is sent. `action` links a template to an outgoing
+/// email as its default; at most one template holds a given action (enforced in code).
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  name      String   @default("")
+  subject   String   @default("")
+  body      String   @default("")   // plain text; blank lines → paragraphs, **bold** supported
+  action    String   @default("")   // "" = unassigned | "offer" | "discount" | "admin_notify"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 /// Uploaded images, stored in the database so they survive redeploys (Railway's
 /// container filesystem is ephemeral — files written to /public/uploads are lost).
 /// Served through /api/media/[id]. Referenced from image fields as "/api/media/<id>".
