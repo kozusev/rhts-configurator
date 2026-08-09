@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { resendOffer } from "@/app/admin/lead-actions";
 
@@ -28,9 +29,12 @@ export default function ResendOfferModal({
   prompt?: string;
 }) {
   const [open, setOpen] = useState(autoOpen);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  useEffect(() => setMounted(true), []);
 
   // When opened automatically from a ?notify= hint, clear the hint on dismiss so it doesn't
   // reopen on refresh. (Sending redirects away on its own.)
@@ -82,7 +86,9 @@ export default function ResendOfferModal({
         ✉️ Resend offer
       </button>
 
-      {open && (
+      {/* Portal to <body> so the overlay escapes the .card ancestor's backdrop-filter,
+          which otherwise becomes the containing block for position: fixed. */}
+      {open && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
           onClick={close}
@@ -142,7 +148,8 @@ export default function ResendOfferModal({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

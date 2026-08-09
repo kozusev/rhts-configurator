@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { notifyLeadStatus } from "@/app/admin/lead-actions";
 
@@ -23,9 +24,12 @@ export default function NotifyCustomerModal({
   prompt?: string;
 }) {
   const [open, setOpen] = useState(autoOpen);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  useEffect(() => setMounted(true), []);
 
   function close() {
     setOpen(false);
@@ -70,7 +74,9 @@ export default function NotifyCustomerModal({
         ✉️ Notify customer
       </button>
 
-      {open && (
+      {/* Portal to <body> so the overlay escapes the .card ancestor's backdrop-filter,
+          which otherwise becomes the containing block for position: fixed. */}
+      {open && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
           onClick={close}
@@ -126,7 +132,8 @@ export default function NotifyCustomerModal({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

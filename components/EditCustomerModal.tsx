@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import { updateLeadCustomer } from "@/app/admin/lead-actions";
 
@@ -17,7 +18,10 @@ export type CustomerData = {
 
 export default function EditCustomerModal({ leadId, customer }: { leadId: string; customer: CustomerData }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const searchParams = useSearchParams();
+
+  useEffect(() => setMounted(true), []);
 
   // The save action redirects to ?ok=customer on success (a soft navigation that would
   // otherwise leave this modal mounted and open). Close it once that lands.
@@ -31,7 +35,9 @@ export default function EditCustomerModal({ leadId, customer }: { leadId: string
         ✎ Edit
       </button>
 
-      {open && (
+      {/* Portal to <body> so the overlay escapes the .card ancestor's backdrop-filter,
+          which otherwise becomes the containing block for position: fixed. */}
+      {open && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
           onClick={() => setOpen(false)}
@@ -60,7 +66,8 @@ export default function EditCustomerModal({ leadId, customer }: { leadId: string
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
