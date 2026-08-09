@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const LABEL_KEYS = [
   "step_robot", "step_options", "step_contact", "robot_year", "robot_reach", "robot_payload",
-  "robot_controller", "select", "selected", "add", "added", "summary", "base_pack", "robot",
+  "robot_controller", "cond_new", "cond_used", "select", "selected", "add", "added", "summary", "base_pack", "robot",
   "options", "total", "first_name", "last_name", "email", "phone", "company", "get_offer",
   "sending", "thanks_title", "thanks_body", "download_pdf", "required", "no_robot",
   "optional_note", "reg_number", "delivery_address",
