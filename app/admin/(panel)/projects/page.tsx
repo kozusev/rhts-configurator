@@ -3,6 +3,7 @@ import { requireContentEditor } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { deleteProject, duplicateProject } from "../../actions";
+import ConfirmDeleteButton from "@/components/admin/ConfirmDeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function ProjectsList() {
               <div className="mt-3 flex gap-2">
                 <Link href={`/admin/projects/${p.id}`} className="btn-ghost !px-3 !py-1.5 text-xs">Edit</Link>
                 <form action={duplicateProject}><input type="hidden" name="id" value={p.id} /><button className="btn-ghost !px-3 !py-1.5 text-xs">Copy</button></form>
-                <form action={deleteProject}><input type="hidden" name="id" value={p.id} /><button className="btn-ghost !px-3 !py-1.5 text-xs text-red-400">Delete</button></form>
+                <ConfirmDeleteButton action={deleteProject} fields={{ id: p.id }} message={`Delete slide "${t(p.title, "en")}"?\n\nThis cannot be undone.`} />
               </div>
             </div>
           </div>

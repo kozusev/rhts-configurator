@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { money } from "@/lib/format";
 import { getBomTotalsMap } from "@/lib/bom";
 import BomCostLine from "@/components/admin/BomCostLine";
+import ConfirmDeleteButton from "@/components/admin/ConfirmDeleteButton";
 import { deleteRobot, duplicateRobot } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export default async function RobotsList() {
               <div className="mt-3 flex gap-2">
                 <Link href={`/admin/robots/${r.id}`} className="btn-ghost !px-3 !py-1.5 text-xs">Edit</Link>
                 <form action={duplicateRobot}><input type="hidden" name="id" value={r.id} /><button className="btn-ghost !px-3 !py-1.5 text-xs">Copy</button></form>
-                <form action={deleteRobot}><input type="hidden" name="id" value={r.id} /><button className="btn-ghost !px-3 !py-1.5 text-xs text-red-400">Delete</button></form>
+                <ConfirmDeleteButton action={deleteRobot} fields={{ id: r.id }} message={`Delete robot "${r.brand} ${r.model}"?\n\nThis cannot be undone.`} />
               </div>
             </div>
           </div>

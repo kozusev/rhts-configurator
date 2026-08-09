@@ -72,7 +72,13 @@ export default function MessageTemplateCard({ template: t }: { template: CardTem
             </div>
           </form>
           {/* Separate form — HTML forms can't nest. */}
-          <form action={deleteMessageTemplate} className="border-t border-white/10 pt-3">
+          <form
+            action={deleteMessageTemplate}
+            className="border-t border-white/10 pt-3"
+            onSubmit={(e) => {
+              if (!confirm(`Delete template "${t.name || "Untitled"}"?\n\nThis cannot be undone.`)) e.preventDefault();
+            }}
+          >
             <input type="hidden" name="id" value={t.id} />
             <button className="text-xs text-red-400 hover:text-red-300">Delete this template</button>
           </form>

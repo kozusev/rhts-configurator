@@ -5,6 +5,7 @@ import { t } from "@/lib/i18n";
 import { money } from "@/lib/format";
 import { getBomTotalsMap } from "@/lib/bom";
 import BomCostLine from "@/components/admin/BomCostLine";
+import ConfirmDeleteButton from "@/components/admin/ConfirmDeleteButton";
 import { deletePackage, duplicatePackage } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function Packageslist() {
               <div className="mt-3 flex gap-2">
                 <Link href={`/admin/packages/${p.id}`} className="btn-ghost !px-3 !py-1.5 text-xs">Edit</Link>
                 <form action={duplicatePackage}><input type="hidden" name="id" value={p.id} /><button className="btn-ghost !px-3 !py-1.5 text-xs">Copy</button></form>
-                <form action={deletePackage}><input type="hidden" name="id" value={p.id} /><button className="btn-ghost !px-3 !py-1.5 text-xs text-red-400">Delete</button></form>
+                <ConfirmDeleteButton action={deletePackage} fields={{ id: p.id }} message={`Delete pack "${t(p.name, "en")}"?\n\nThis cannot be undone.`} />
               </div>
             </div>
           </div>

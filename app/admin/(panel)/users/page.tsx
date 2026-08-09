@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { createUser, deleteUser, updateUserRole, resetUserPassword } from "../../users-actions";
+import ConfirmDeleteButton from "@/components/admin/ConfirmDeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -127,10 +128,11 @@ export default async function UsersPage({
 
                 {/* Delete */}
                 {!isMe && (
-                  <form action={deleteUser}>
-                    <input type="hidden" name="id" value={u.id} />
-                    <button className="btn-ghost !px-3 !py-1.5 text-xs text-red-400">Delete</button>
-                  </form>
+                  <ConfirmDeleteButton
+                    action={deleteUser}
+                    fields={{ id: u.id }}
+                    message={`Delete user ${u.email}?\n\nThis cannot be undone.`}
+                  />
                 )}
               </div>
             </div>

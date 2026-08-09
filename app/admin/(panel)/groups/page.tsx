@@ -3,6 +3,7 @@ import { requireContentEditor } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { deleteGroup } from "../../actions";
+import ConfirmDeleteButton from "@/components/admin/ConfirmDeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function GroupsList() {
             </div>
             <div className="flex gap-2">
               <Link href={`/admin/groups/${g.id}`} className="btn-ghost !px-3 !py-1.5 text-xs">Manage</Link>
-              <form action={deleteGroup}><input type="hidden" name="id" value={g.id} /><button className="btn-ghost !px-3 !py-1.5 text-xs text-red-400">Delete</button></form>
+              <ConfirmDeleteButton action={deleteGroup} fields={{ id: g.id }} message={`Delete group "${t(g.name, "en")}" and all its options?\n\nThis cannot be undone.`} />
             </div>
           </div>
         ))}

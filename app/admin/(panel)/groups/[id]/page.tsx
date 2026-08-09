@@ -8,6 +8,7 @@ import { getBomTotalsMap } from "@/lib/bom";
 import { saveGroup, deleteOption, duplicateOption } from "../../../actions";
 import MultiLangField from "@/components/admin/MultiLangField";
 import BomCostLine from "@/components/admin/BomCostLine";
+import ConfirmDeleteButton from "@/components/admin/ConfirmDeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -64,11 +65,11 @@ export default async function GroupDetail({ params }: { params: { id: string } }
                     <input type="hidden" name="id" value={o.id} />
                     <button className="btn-ghost !px-3 !py-1.5 text-xs">Copy</button>
                   </form>
-                  <form action={deleteOption}>
-                    <input type="hidden" name="id" value={o.id} />
-                    <input type="hidden" name="groupId" value={group.id} />
-                    <button className="btn-ghost !px-3 !py-1.5 text-xs text-red-400">Delete</button>
-                  </form>
+                  <ConfirmDeleteButton
+                    action={deleteOption}
+                    fields={{ id: o.id, groupId: group.id }}
+                    message={`Delete option "${t(o.name, "en")}"?\n\nThis cannot be undone.`}
+                  />
                 </div>
               </div>
             ))}
