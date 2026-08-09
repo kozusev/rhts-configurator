@@ -81,7 +81,7 @@ export default function LeadCard({ lead: l }: { lead: LeadRow }) {
       )}
 
       <div className="mt-2">
-        <Link href={`/admin/leads/${l.id}`} className="text-xs font-medium text-brand-300 hover:text-brand-200">Open lead →</Link>
+        <Link href={`/admin/leads/${l.id}`} className="btn-ghost !px-3 !py-1.5 text-xs text-brand-300 hover:text-brand-200">Open lead →</Link>
       </div>
     </div>
   );
