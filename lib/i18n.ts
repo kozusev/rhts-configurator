@@ -78,7 +78,7 @@ const dict: Dict = {
   get_offer: { en: "Get my PDF offer", es: "Recibir mi oferta en PDF", uk: "Отримати пропозицію у PDF" },
   sending: { en: "Sending…", es: "Enviando…", uk: "Надсилання…" },
   thanks_title: { en: "Thank you!", es: "¡Gracias!", uk: "Дякуємо!" },
-  thanks_body: { en: "Your offer has been generated. A copy has been sent to your email.", es: "Tu oferta ha sido generada. Se ha enviado una copia a tu correo.", uk: "Вашу пропозицію сформовано. Копію надіслано на вашу пошту." },
+  thanks_body: { en: "Your offer has been generated — download it below. Our team will review it and follow up with you shortly.", es: "Tu oferta ha sido generada — descárgala abajo. Nuestro equipo la revisará y se pondrá en contacto contigo en breve.", uk: "Вашу пропозицію сформовано — завантажте її нижче. Наша команда перевірить її та невдовзі зв'яжеться з вами." },
   download_pdf: { en: "Download PDF offer", es: "Descargar oferta PDF", uk: "Завантажити PDF" },
   required: { en: "Please fill in all required fields.", es: "Rellena todos los campos obligatorios.", uk: "Заповніть усі обов'язкові поля." },
   no_robot: { en: "Please select a robot to continue.", es: "Selecciona un robot para continuar.", uk: "Оберіть робота, щоб продовжити." },

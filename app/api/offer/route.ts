@@ -3,8 +3,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { isLocale } from "@/lib/i18n";
 import { buildOfferSnapshot, nextOfferNumber, type OfferInput } from "@/lib/offer";
-import { renderOfferPdf } from "@/lib/pdf";
-import { sendOfferEmails } from "@/lib/mail";
 import { getSetting } from "@/lib/settings";
 import { getSessionUser } from "@/lib/auth";
 
@@ -50,9 +48,9 @@ export async function POST(req: NextRequest) {
     let offerNumber = await nextOfferNumber(prefix);
     const snapshot = await buildOfferSnapshot(input, offerNumber);
 
-    // Save the lead FIRST so it's never lost. Admin-created leads (createdBy set) are
-    // auto-assigned to their creator and NOT emailed — the offer is sent manually from
-    // the lead page. Public website leads (createdBy empty) get the instant offer emailed.
+    // Save the lead FIRST so it's never lost. No offer is emailed automatically — neither
+    // admin-created leads nor public website leads. Every offer is sent manually from the
+    // lead page via "Resend offer", so a manager reviews it before the client hears from us.
     // Retry on the rare race where two submissions pick the same offer number (P2002).
     let lead;
     for (let attempt = 0; ; attempt++) {
@@ -92,21 +90,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let emailStatus = "pending";
-    if (!createdBy) {
-      // Public website submission → auto-send the instant offer (failures must not break the response).
-      try {
-        const pdf = await renderOfferPdf(snapshot);
-        const mail = await sendOfferEmails(snapshot, pdf);
-        emailStatus = mail.mode;
-      } catch (e) {
-        console.error("[api/offer] email error", e);
-        emailStatus = "failed";
-      }
-      await prisma.lead.update({ where: { id: lead.id }, data: { emailStatus } });
-    }
-
-    return NextResponse.json({ offerNumber, pdfUrl: `/api/offer/${offerNumber}/pdf`, emailStatus, leadUrl: `/admin/leads/${lead.id}` });
+    // Nothing is emailed here. The lead stays "pending" until a manager reviews it and
+    // clicks "Resend offer" on the lead page. The customer can still download their PDF
+    // immediately from the success screen (pdfUrl below) — they just aren't emailed yet.
+    return NextResponse.json({ offerNumber, pdfUrl: `/api/offer/${offerNumber}/pdf`, emailStatus: "pending", leadUrl: `/admin/leads/${lead.id}` });
   } catch (e) {
     console.error("[api/offer] error", e);
     return NextResponse.json({ error: "Could not generate offer" }, { status: 500 });
