@@ -93,3 +93,22 @@ export function ui(key: keyof typeof dict | string, locale: Locale): string {
   if (!entry) return String(key);
   return entry[locale] || entry[defaultLocale] || "";
 }
+
+/**
+ * UI-string keys the <Configurator> needs. Single source of truth — used by
+ * both the public package page and the admin lead flows via configuratorLabels().
+ */
+export const CONFIGURATOR_LABEL_KEYS = [
+  "step_robot", "step_options", "step_contact", "robot_year", "robot_reach", "robot_payload",
+  "robot_controller", "cond_new", "cond_used", "select", "selected", "add", "added", "summary",
+  "base_pack", "robot", "options", "total", "first_name", "last_name", "email", "phone", "company",
+  "get_offer", "sending", "thanks_title", "thanks_body", "download_pdf", "required", "no_robot",
+  "optional_note", "reg_number", "delivery_address",
+] as const;
+
+/** Build the label map the <Configurator> expects for a given locale. */
+export function configuratorLabels(locale: Locale): Record<string, string> {
+  const labels: Record<string, string> = {};
+  for (const k of CONFIGURATOR_LABEL_KEYS) labels[k] = ui(k, locale);
+  return labels;
+}

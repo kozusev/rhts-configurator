@@ -1,14 +1,6 @@
 import { prisma } from "./db";
-import { t, ui, type Locale } from "./i18n";
+import { t, configuratorLabels, type Locale } from "./i18n";
 import type { GroupVM, RobotVM, PackageVM, AdminPackageVM } from "@/components/Configurator";
-
-const LABEL_KEYS = [
-  "step_robot", "step_options", "step_contact", "robot_year", "robot_reach", "robot_payload",
-  "robot_controller", "cond_new", "cond_used", "select", "selected", "add", "added", "summary", "base_pack", "robot",
-  "options", "total", "first_name", "last_name", "email", "phone", "company", "get_offer",
-  "sending", "thanks_title", "thanks_body", "download_pdf", "required", "no_robot",
-  "optional_note", "reg_number", "delivery_address",
-];
 
 /** Build the pack/robots/options/labels view-models the Configurator needs, by package id. */
 export async function getConfiguratorData(packageId: string, locale: Locale) {
@@ -42,8 +34,7 @@ export async function getConfiguratorData(packageId: string, locale: Locale) {
       })),
     }));
 
-  const labels: Record<string, string> = {};
-  for (const k of LABEL_KEYS) labels[k] = ui(k, locale);
+  const labels = configuratorLabels(locale);
 
   const pkgVM: PackageVM = {
     id: pkg.id, slug: pkg.slug, name: t(pkg.name, locale), basePrice: pkg.basePrice, currency: pkg.currency,
@@ -89,8 +80,7 @@ export async function getAdminConfiguratorData(locale: Locale) {
       })),
     }));
 
-  const labels: Record<string, string> = {};
-  for (const k of LABEL_KEYS) labels[k] = ui(k, locale);
+  const labels = configuratorLabels(locale);
 
   return { packageVMs, robotVMs, groupVMs, labels };
 }

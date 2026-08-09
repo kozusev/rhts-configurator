@@ -1,19 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { t, ui, type Locale } from "@/lib/i18n";
+import { t, ui, configuratorLabels, type Locale } from "@/lib/i18n";
 import { money } from "@/lib/format";
 import Configurator, { type GroupVM, type RobotVM } from "@/components/Configurator";
 
 export const dynamic = "force-dynamic";
-
-const LABEL_KEYS = [
-  "step_robot", "step_options", "step_contact", "robot_year", "robot_reach", "robot_payload",
-  "robot_controller", "cond_new", "cond_used", "select", "selected", "add", "added", "summary", "base_pack", "robot",
-  "options", "total", "first_name", "last_name", "email", "phone", "company", "get_offer",
-  "sending", "thanks_title", "thanks_body", "download_pdf", "required", "no_robot",
-  "optional_note", "reg_number", "delivery_address",
-];
 
 export default async function PackagePage({ params }: { params: { locale: Locale; slug: string } }) {
   const { locale, slug } = params;
@@ -55,8 +47,7 @@ export default async function PackagePage({ params }: { params: { locale: Locale
       })),
     }));
 
-  const labels: Record<string, string> = {};
-  for (const k of LABEL_KEYS) labels[k] = ui(k, locale);
+  const labels = configuratorLabels(locale);
 
   return (
     <>
