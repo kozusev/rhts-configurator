@@ -6,10 +6,10 @@ import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { renderOfferPdf } from "@/lib/pdf";
-import { sendOfferEmails } from "@/lib/mail";
+import { sendOfferEmails, sendCustomerMessage } from "@/lib/mail";
 import type { OfferSnapshot } from "@/lib/offer";
 import { LEAD_STATUSES } from "@/lib/leadStatus";
-import { offerVars, renderTemplate, bodyToHtml, getTemplateForAction } from "@/lib/templates";
+import { offerVars, renderTemplate, bodyToHtml, getTemplateForAction, getTemplateForStatus } from "@/lib/templates";
 
 async function actor(): Promise<string> {
   const me = await getSessionUser();
@@ -240,6 +240,60 @@ export async function resendOffer(formData: FormData) {
   revalidatePath(`/admin/leads/${id}`);
   revalidatePath("/admin");
   redirect(`/admin/leads/${id}?${mail.ok ? "ok=resent" : "error=emailfailed"}`);
+}
+
+/**
+ * Manager-triggered: email the customer an order-status update (no PDF, no pricing table).
+ * The message comes from the popup — a status template or a one-off custom message, both
+ * supporting {{placeholders}}. Nothing is sent automatically; this only runs on the button.
+ */
+export async function notifyLeadStatus(formData: FormData) {
+  const id = String(formData.get("id") || "");
+
+  const { lead, author } = await ownedLead(id);
+
+  let snap: OfferSnapshot;
+  try {
+    snap = JSON.parse(lead.snapshot);
+  } catch {
+    redirect(`/admin/leads/${id}?error=corrupt`);
+  }
+
+  snap.company = await getSettings();
+  const vars = offerVars(snap);
+
+  let subjectRaw = String(formData.get("subject") || "").trim();
+  let bodyRaw = String(formData.get("body") || "").trim();
+  const templateName = String(formData.get("templateName") || "").trim();
+  if (!subjectRaw || !bodyRaw) {
+    const fallback = await getTemplateForStatus(lead.status);
+    if (fallback) {
+      subjectRaw = subjectRaw || fallback.subject;
+      bodyRaw = bodyRaw || fallback.body;
+    }
+  }
+  if (!subjectRaw || !bodyRaw) redirect(`/admin/leads/${id}?error=nomessage`);
+
+  const mail = await sendCustomerMessage(snap, {
+    subject: renderTemplate(subjectRaw, vars),
+    bodyHtml: bodyToHtml(renderTemplate(bodyRaw, vars)),
+  });
+
+  // Note: we do NOT touch `emailStatus` here — that field tracks the offer email, not this note.
+  await prisma.lead.update({ where: { id }, data: { assignedTo: author } });
+  const via = templateName ? ` (“${templateName}”)` : " (custom message)";
+  await logEvent(
+    id,
+    "email",
+    mail.ok
+      ? `Status update emailed to ${snap.customer.email} (${mail.mode})${via}.`
+      : `Status email FAILED to ${snap.customer.email}: ${mail.detail || "unknown error"}`,
+    author
+  );
+
+  revalidatePath(`/admin/leads/${id}`);
+  revalidatePath("/admin");
+  redirect(`/admin/leads/${id}?${mail.ok ? "ok=notified" : "error=emailfailed"}`);
 }
 
 /** Edit the customer details of a lead (also updated inside the stored offer snapshot). */

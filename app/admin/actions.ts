@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { isAuthenticated, getSessionUser, canEditContent } from "@/lib/auth";
 import { ml, locales } from "@/lib/i18n";
+import { isValidTemplateAction } from "@/lib/templateMeta";
 
 function assertAuth() {
   if (!isAuthenticated()) redirect("/admin/login");
@@ -278,8 +279,6 @@ export async function saveSettings(fd: FormData) {
 }
 
 // ---------------- Message templates ----------------
-const VALID_TEMPLATE_ACTIONS = ["", "offer", "discount", "admin_notify"];
-
 async function assertAdmin() {
   const me = await getSessionUser();
   if (!me) redirect("/admin/login");
@@ -289,7 +288,7 @@ async function assertAdmin() {
 export async function saveMessageTemplate(fd: FormData) {
   await assertAdmin();
   const id = str(fd, "id");
-  const action = VALID_TEMPLATE_ACTIONS.includes(str(fd, "action")) ? str(fd, "action") : "";
+  const action = isValidTemplateAction(str(fd, "action")) ? str(fd, "action") : "";
   const data = { name: str(fd, "name").trim() || "Untitled template", subject: str(fd, "subject"), body: str(fd, "body"), action };
 
   // At most one template per action: if this one claims an action, release it from any other.

@@ -1,6 +1,6 @@
 export const LEAD_STATUSES = [
   "new", "contacted", "updated", "discounted",
-  "production", "shipped", "delivered", "installation",
+  "production", "ready_for_shipping", "shipped", "delivered", "installation",
   "closed", "canceled", "finished",
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
@@ -23,6 +23,8 @@ export function statusMeta(status: string): StatusMeta {
       return { label: "Discount Applied", badge: "border-teal-500/40 bg-teal-500/15 text-teal-300", dot: "bg-teal-400", star: false };
     case "production":
       return { label: "Production", badge: "border-violet-500/40 bg-violet-500/15 text-violet-300", dot: "bg-violet-400", star: false };
+    case "ready_for_shipping":
+      return { label: "Ready for shipping", badge: "border-orange-500/40 bg-orange-500/15 text-orange-300", dot: "bg-orange-400", star: false };
     case "shipped":
       return { label: "Shipped", badge: "border-cyan-500/40 bg-cyan-500/15 text-cyan-300", dot: "bg-cyan-400", star: false };
     case "delivered":

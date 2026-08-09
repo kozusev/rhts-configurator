@@ -1,5 +1,7 @@
-import { saveMessageTemplate, deleteMessageTemplate } from "../../../actions";
-import { ensureDefaultTemplates, TEMPLATE_ACTIONS, PLACEHOLDERS, actionLabel } from "@/lib/templates";
+import { saveMessageTemplate } from "../../../actions";
+import { ensureDefaultTemplates } from "@/lib/templates";
+import { PLACEHOLDERS, ACTION_OPTION_GROUPS, isStatusAction } from "@/lib/templateMeta";
+import MessageTemplateCard from "@/components/admin/MessageTemplateCard";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +20,16 @@ export default async function MessageTemplatesPage() {
     );
   }
 
+  const offerTemplates = templates.filter((t) => !isStatusAction(t.action));
+  const statusTemplates = templates.filter((t) => isStatusAction(t.action));
+
   return (
     <div className="space-y-6">
       <div className="card p-5 text-sm text-slate-300">
         <p>
-          These are the automatic email messages the app sends. Edit the wording, add your own variants, and
-          assign one template to each <b>action</b> so it’s used by default. When you press <b>Resend offer</b>{" "}
-          on a lead you can pick any template here or type a one-off message.
+          These are the automatic email messages the app can send. Edit the wording, add your own variants, and
+          assign one template to each <b>action</b> so it’s used by default. Order-status messages are sent from a
+          lead’s <b>Notify customer</b> button; offer messages from <b>Resend offer</b>. Nothing is sent automatically.
         </p>
         <div className="mt-3">
           <div className="mb-1 font-semibold text-slate-200">Placeholders you can use:</div>
@@ -41,52 +46,24 @@ export default async function MessageTemplatesPage() {
         </div>
       </div>
 
-      {templates.map((t) => (
-        <div key={t.id} className="card p-5">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="font-bold">{t.name || "Untitled template"}</h2>
-            {t.action ? (
-              <span className="chip border-brand-500/40 text-brand-300">Assigned: {actionLabel(t.action)}</span>
-            ) : (
-              <span className="chip text-slate-400">Unassigned</span>
-            )}
-          </div>
-          <form action={saveMessageTemplate} className="space-y-3">
-            <input type="hidden" name="id" value={t.id} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="label">Template name</label>
-                <input name="name" defaultValue={t.name} className="field" />
-              </div>
-              <div>
-                <label className="label">Use for action</label>
-                <select name="action" defaultValue={t.action} className="field">
-                  <option value="">— Unassigned —</option>
-                  {TEMPLATE_ACTIONS.map((a) => (
-                    <option key={a.key} value={a.key}>{a.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="label">Subject</label>
-              <input name="subject" defaultValue={t.subject} className="field" />
-            </div>
-            <div>
-              <label className="label">Message body</label>
-              <textarea name="body" rows={7} defaultValue={t.body} className="field text-sm" />
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="btn-primary !py-1.5 text-sm">Save template</button>
-            </div>
-          </form>
-          {/* Separate form — HTML forms can't nest. */}
-          <form action={deleteMessageTemplate} className="mt-2 border-t border-white/10 pt-3">
-            <input type="hidden" name="id" value={t.id} />
-            <button className="text-xs text-red-400 hover:text-red-300">Delete this template</button>
-          </form>
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Offer emails</h2>
+        <div className="space-y-3">
+          {offerTemplates.map((t) => (
+            <MessageTemplateCard key={t.id} template={t} />
+          ))}
         </div>
-      ))}
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-400">Order-status emails</h2>
+        <p className="mb-3 text-xs text-slate-500">One message per stage of the order — sent to keep the customer informed.</p>
+        <div className="space-y-3">
+          {statusTemplates.map((t) => (
+            <MessageTemplateCard key={t.id} template={t} />
+          ))}
+        </div>
+      </section>
 
       <div className="card border-brand-500/20 p-5">
         <h2 className="mb-3 font-bold">+ Add a new template</h2>
@@ -100,8 +77,12 @@ export default async function MessageTemplatesPage() {
               <label className="label">Use for action</label>
               <select name="action" defaultValue="" className="field">
                 <option value="">— Unassigned —</option>
-                {TEMPLATE_ACTIONS.map((a) => (
-                  <option key={a.key} value={a.key}>{a.label}</option>
+                {ACTION_OPTION_GROUPS.map((g) => (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.options.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>

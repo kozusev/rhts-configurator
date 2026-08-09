@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { money } from "@/lib/format";
-import { LEAD_STATUSES } from "@/lib/leadStatus";
+import { LEAD_STATUSES, statusMeta } from "@/lib/leadStatus";
 import StatusBadge from "@/components/StatusBadge";
 import DeleteLeadButton from "@/components/DeleteLeadButton";
 import EditCustomerModal from "@/components/EditCustomerModal";
 import ResendOfferModal from "@/components/ResendOfferModal";
-import { listTemplatesSafe } from "@/lib/templates";
+import NotifyCustomerModal from "@/components/NotifyCustomerModal";
+import { listTemplatesSafe, listStatusTemplatesMerged } from "@/lib/templates";
 import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment } from "../../../lead-actions";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,8 @@ const FLASH: Record<string, string> = {
   discount: "Discount applied. Use “Resend offer” to email it to the client.",
   modified: "Offer reconfigured. Use “Resend offer” to email it to the client.",
   resent: "Offer re-sent to the client.",
+  notified: "Status update emailed to the client.",
+  nomessage: "Nothing to send — pick a template or type a message.",
   created: "Lead created.",
   customer: "Customer details updated.",
   custinvalid: "First name, last name and email are required.",
@@ -65,6 +68,7 @@ export default async function LeadDetailPage({
   const options: any[] = snap?.options || [];
   const hasDiscount = snap?.discount && snap.discount.amount > 0;
   const templates = await listTemplatesSafe();
+  const statusTemplates = await listStatusTemplatesMerged();
   const flash = FLASH[searchParams.ok || ""] || FLASH[searchParams.error || ""];
   const flashOk = !!FLASH[searchParams.ok || ""];
 
@@ -206,10 +210,19 @@ export default async function LeadDetailPage({
             <form action={setLeadStatus} className="flex gap-2">
               <input type="hidden" name="id" value={lead.id} />
               <select name="status" defaultValue={lead.status} className="field !py-1.5 text-sm">
-                {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                {LEAD_STATUSES.map((s) => <option key={s} value={s}>{statusMeta(s).label}</option>)}
               </select>
               <button className="btn-ghost !px-3 !py-1.5 text-sm">Save</button>
             </form>
+            <div className="mt-3 border-t border-white/10 pt-3">
+              <NotifyCustomerModal
+                leadId={lead.id}
+                recipient={lead.email}
+                templates={statusTemplates}
+                currentStatus={lead.status}
+              />
+              <p className="mt-2 text-xs text-slate-500">Email the client a status update. Nothing is sent until you do.</p>
+            </div>
           </div>
           )}
 

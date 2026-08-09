@@ -290,3 +290,98 @@ export async function sendOfferEmails(
     return { ok: false, mode: "failed", detail: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/** Branded wrapper for a plain message email (status updates) — no config table, no PDF. */
+function simpleEmailHtml(s: OfferSnapshot, bodyHtml: string, logoSrc: string | null): string {
+  const header = logoSrc
+    ? `<div style="background:${DARK};padding:16px 20px"><img src="${logoSrc}" alt="${s.company.company_name || "RHTS"}" style="height:34px"/></div>`
+    : `<div style="background:${DARK};padding:16px 20px"><span style="color:#fff;font-size:18px;font-weight:bold">${s.company.company_name || "RHTS Milling Cells"}</span></div>`;
+  return `<!doctype html><html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#1f2937">
+    <div style="max-width:640px;margin:0 auto;background:#fff">
+      ${header}
+      <div style="height:4px;background:${RED}"></div>
+      <div style="padding:24px">
+        ${bodyHtml}
+        <p style="color:#94a3b8;font-size:12px;margin-top:24px">${s.company.company_name || "RHTS"} · ${s.company.company_email || ""} · ${s.company.company_phone || ""}</p>
+      </div>
+    </div>
+  </body></html>`;
+}
+
+/**
+ * Send a simple, PDF-less message to the customer (used for order-status notifications).
+ * Manager-triggered only. A copy is BCC'd to the admin inbox so there's an internal record.
+ * Reuses the same preview / Resend / SMTP delivery paths as the offer email.
+ */
+export async function sendCustomerMessage(
+  s: OfferSnapshot,
+  msg: { subject: string; bodyHtml: string }
+): Promise<SendResult> {
+  const adminEmail = s.company.admin_email || "";
+  const from = process.env.SMTP_FROM || s.company.company_email || "no-reply@rhts.local";
+  const host = process.env.SMTP_HOST;
+  const logo = await logoDataUri();
+
+  // Preview mode: no SMTP configured — save the rendered message to disk.
+  if (!host) {
+    try {
+      const dir = path.join(process.cwd(), ".mail-preview");
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(
+        path.join(dir, `${s.offerNumber}-message-${Date.now()}.html`),
+        `<h1>To customer: ${s.customer.email} — ${msg.subject}</h1>${simpleEmailHtml(s, msg.bodyHtml, logo)}`
+      );
+      console.log(`[mail:preview] Message to ${s.customer.email} saved to .mail-preview/`);
+    } catch (e) {
+      console.error("[mail:preview] failed to write preview", e);
+    }
+    return { ok: true, mode: "preview" };
+  }
+
+  // Preferred path: Resend HTTPS API.
+  const resendKey = process.env.RESEND_API_KEY || (/resend\.com$/i.test(host) ? process.env.SMTP_PASS || "" : "");
+  if (resendKey) {
+    try {
+      await resendSend(resendKey, {
+        from,
+        to: [s.customer.email],
+        bcc: adminEmail ? [adminEmail] : undefined,
+        subject: msg.subject,
+        html: simpleEmailHtml(s, msg.bodyHtml, logo),
+      });
+      return { ok: true, mode: "sent" };
+    } catch (e) {
+      console.error("[mail:resend] message send failed", e);
+      return { ok: false, mode: "failed", detail: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  // Fallback: SMTP via nodemailer, inlining the logo via CID.
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === "true",
+      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+    });
+
+    const logoAtt = logo ? dataUriToAttachment(logo, "logo") : null;
+    const html = simpleEmailHtml(s, msg.bodyHtml, logoAtt ? "cid:logo" : null);
+
+    await transporter.sendMail({
+      from,
+      to: s.customer.email,
+      bcc: adminEmail || undefined,
+      subject: msg.subject,
+      html,
+      attachments: logoAtt ? [logoAtt] : [],
+    });
+    return { ok: true, mode: "sent" };
+  } catch (e) {
+    console.error("[mail] message send failed", e);
+    return { ok: false, mode: "failed", detail: e instanceof Error ? e.message : String(e) };
+  }
+}

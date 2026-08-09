@@ -40,7 +40,7 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
     { label: "New", set: inBucket(["new"]), accent: "text-emerald-300" },
     { label: "Idle", set: inBucket(["contacted", "updated", "discounted"]), accent: "text-yellow-300" },
     { label: "Closed", set: inBucket(["closed"]), accent: "text-amber-300" },
-    { label: "Production", set: inBucket(["production"]), accent: "text-violet-300" },
+    { label: "Production", set: inBucket(["production", "ready_for_shipping"]), accent: "text-violet-300" },
     { label: "Shipped / Delivered", set: inBucket(["shipped", "delivered"]), accent: "text-cyan-300" },
     { label: "Installation", set: inBucket(["installation"]), accent: "text-indigo-300" },
     { label: "Finished", set: inBucket(["finished", "terminated"]), accent: "text-slate-300" },
