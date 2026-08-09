@@ -311,10 +311,5 @@ export async function deleteMessageTemplate(fd: FormData) {
   revalidatePath("/admin/settings/templates");
   redirect("/admin/settings/templates");
 }
-
-// ---------------- Lead status ----------------
-export async function updateLeadStatus(fd: FormData) {
-  await assertContentEditor();
-  await prisma.lead.update({ where: { id: str(fd, "id") }, data: { status: str(fd, "status") } });
-  revalidatePath("/admin");
-}
+// Note: lead status changes go through setLeadStatus() in lead-actions.ts, which records a
+// "status" event in the activity log. There is intentionally no un-logged status updater here.

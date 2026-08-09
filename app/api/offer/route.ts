@@ -90,6 +90,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Record the creation in the activity log (best-effort — the lead is already saved, so a
+    // logging hiccup must not fail the request). Public submissions have no author → "system".
+    try {
+      await prisma.leadEvent.create({
+        data: {
+          leadId: lead.id,
+          type: "created",
+          message: `Lead created${createdBy ? "" : " from the website"} — pack ${snapshot.package.name}, robot ${snapshot.robot?.label || "—"}, ${input.optionIds.length} option(s). Total ${snapshot.total} ${snapshot.currency}.`,
+          author: createdBy,
+        },
+      });
+    } catch (e) {
+      console.error("[api/offer] failed to log created event", e);
+    }
+
     // Nothing is emailed here. The lead stays "pending" until a manager reviews it and
     // clicks "Resend offer" on the lead page. The customer can still download their PDF
     // immediately from the success screen (pdfUrl below) — they just aren't emailed yet.
