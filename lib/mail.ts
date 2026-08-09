@@ -17,7 +17,7 @@ type InlineAttachment = { cid: string; filename: string; content: Buffer; conten
 async function resolveEmailImages(s: OfferSnapshot): Promise<EmailImages> {
   const [logo, pkg, robot, options] = await Promise.all([
     logoDataUri(),
-    imageForDoc(s.package.image),
+    s.package ? imageForDoc(s.package.image) : Promise.resolve(null),
     s.robot ? imageForDoc(s.robot.image) : Promise.resolve(null),
     Promise.all(s.options.map((o) => imageForDoc(o.image))),
   ]);
@@ -57,7 +57,7 @@ function offerEmailHtml(
   opts?: { discountIntro?: boolean; introHtml?: string }
 ): string {
   const rows: string[] = [];
-  rows.push(lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)));
+  if (s.package) rows.push(lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)));
   if (s.robot) rows.push(lineRow(img(imgs.robot), `Robot — ${s.robot.label}`, s.robot.specs, money(s.robot.price, s.currency, s.locale)));
   s.options.forEach((o, i) => {
     const name = o.qty > 1 ? `${o.label} × ${o.qty}` : o.label;
@@ -105,7 +105,7 @@ function offerEmailHtml(
 
 function adminNotifyHtml(s: OfferSnapshot, imgs: EmailImages, img: (src: string | null) => string | null, introHtml?: string): string {
   const rows = [
-    lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale)),
+    ...(s.package ? [lineRow(img(imgs.pkg), `Milling pack — ${s.package.name}`, `${s.package.spindle} · ${s.package.toolHolder}`, money(s.package.price, s.currency, s.locale))] : []),
     ...(s.robot ? [lineRow(img(imgs.robot), `Robot — ${s.robot.label}`, s.robot.specs, money(s.robot.price, s.currency, s.locale))] : []),
     ...s.options.map((o, i) => lineRow(img(imgs.options[i]), o.qty > 1 ? `${o.label} × ${o.qty}` : o.label, o.sub || "", money(o.price, s.currency, s.locale))),
   ].join("");

@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
         data: {
           leadId: lead.id,
           type: "created",
-          message: `Lead created${createdBy ? "" : " from the website"} — pack ${snapshot.package.name}, robot ${snapshot.robot?.label || "—"}, ${input.optionIds.length} option(s). Total ${snapshot.total} ${snapshot.currency}.`,
+          message: `Lead created${createdBy ? "" : " from the website"} — pack ${snapshot.package?.name || "—"}, robot ${snapshot.robot?.label || "—"}, ${input.optionIds.length} option(s). Total ${snapshot.total} ${snapshot.currency}.`,
           author: createdBy,
         },
       });

@@ -78,7 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: { offerNumber
       data: {
         leadId: lead.id,
         type: "modified",
-        message: `Offer reconfigured — pack ${snapshot.package.name}, robot ${snapshot.robot?.label || "—"}, ${input.optionIds.length} options. New total ${snapshot.total} ${snapshot.currency}. Not sent yet.`,
+        message: `Offer reconfigured — pack ${snapshot.package?.name || "—"}, robot ${snapshot.robot?.label || "—"}, ${input.optionIds.length} options. New total ${snapshot.total} ${snapshot.currency}. Not sent yet.`,
         author: me.email,
       },
     });

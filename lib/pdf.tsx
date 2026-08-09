@@ -109,15 +109,17 @@ function OfferDoc({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Configuration</Text>
 
-            <View style={styles.row}>
-              <Thumb src={packageImage} />
-              <View style={styles.cellLabel}>
-                <Text style={styles.cellName}>Milling pack — {s.package.name}</Text>
-                <Text style={styles.cellSub}>{s.package.spindle} · {s.package.toolHolder}</Text>
-                {s.package.description ? <Text style={[styles.cellSub, styles.packDesc]}>{s.package.description}</Text> : null}
+            {s.package ? (
+              <View style={styles.row}>
+                <Thumb src={packageImage} />
+                <View style={styles.cellLabel}>
+                  <Text style={styles.cellName}>Milling pack — {s.package.name}</Text>
+                  <Text style={styles.cellSub}>{s.package.spindle} · {s.package.toolHolder}</Text>
+                  {s.package.description ? <Text style={[styles.cellSub, styles.packDesc]}>{s.package.description}</Text> : null}
+                </View>
+                <Text style={styles.cellPrice}>{money(s.package.price, s.currency, s.locale)}</Text>
               </View>
-              <Text style={styles.cellPrice}>{money(s.package.price, s.currency, s.locale)}</Text>
-            </View>
+            ) : null}
 
             {s.robot ? (
               <View style={styles.row}>
@@ -182,7 +184,7 @@ function OfferDoc({
 export async function renderOfferPdf(s: OfferSnapshot): Promise<Buffer> {
   const [logo, packageImage, robotImage, optionImages] = await Promise.all([
     logoDataUri(),
-    imageForDoc(s.package.image),
+    s.package ? imageForDoc(s.package.image) : Promise.resolve(null),
     s.robot ? imageForDoc(s.robot.image) : Promise.resolve(null),
     Promise.all(s.options.map((o) => imageForDoc(o.image))),
   ]);

@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { getLeadCosts } from "@/lib/bom";
 import LeadCard from "@/components/LeadCard";
+import NewLeadButton from "@/components/NewLeadButton";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,7 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Link href="/admin/leads/new" className="btn-primary !px-4 !py-2 text-sm">+ New lead</Link>
+        <NewLeadButton />
       </div>
 
       {/* Period filter */}

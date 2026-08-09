@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { getSettings } from "@/lib/settings";
+import { getSettings, getSetting } from "@/lib/settings";
 import { renderOfferPdf } from "@/lib/pdf";
 import { sendOfferEmails, sendCustomerMessage } from "@/lib/mail";
-import type { OfferSnapshot } from "@/lib/offer";
+import { buildProductSnapshot, nextOfferNumber, type OfferSnapshot } from "@/lib/offer";
 import { LEAD_STATUSES } from "@/lib/leadStatus";
 import { offerVars, renderTemplate, bodyToHtml, getTemplateForAction, getTemplateForStatus, STATUS_EMAIL_STATUSES } from "@/lib/templates";
 import { money } from "@/lib/format";
@@ -61,6 +61,81 @@ function round2(n: number): number {
 
 async function logEvent(leadId: string, type: string, message: string, author: string) {
   await prisma.leadEvent.create({ data: { leadId, type, message, author } });
+}
+
+/** Create a free-form "Product / Service" lead from custom line items. */
+export async function createProductLead(formData: FormData) {
+  const me = await getSessionUser();
+  if (!me) redirect("/admin/login");
+
+  const v = (k: string) => String(formData.get(k) || "").trim();
+
+  let rawLines: unknown = [];
+  try { rawLines = JSON.parse(String(formData.get("lines") || "[]")); } catch {}
+  const lines = (Array.isArray(rawLines) ? rawLines : [])
+    .map((l: any) => ({
+      name: String(l?.name ?? "").trim(),
+      description: String(l?.description ?? "").trim(),
+      qty: Math.max(1, Math.round(Number(l?.qty) || 1)),
+      unitPrice: Number.isFinite(+l?.unitPrice) ? +l.unitPrice : 0,
+    }))
+    .filter((l) => l.name !== "" || l.unitPrice !== 0);
+
+  if (lines.length === 0) redirect("/admin/leads/new/product?error=nolines");
+
+  const currency = v("currency") || "EUR";
+  const prefix = await getSetting("offer_prefix", "RHTS");
+  let offerNumber = await nextOfferNumber(prefix);
+  const snapshot = await buildProductSnapshot(
+    {
+      firstName: v("firstName"), lastName: v("lastName"), email: v("email"), phone: v("phone"),
+      company: v("company"), note: v("note"), deliveryAddress: v("deliveryAddress"), regNumber: v("regNumber"),
+      currency, lines,
+    },
+    offerNumber
+  );
+
+  let lead;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      lead = await prisma.lead.create({
+        data: {
+          offerNumber,
+          firstName: snapshot.customer.firstName,
+          lastName: snapshot.customer.lastName,
+          email: snapshot.customer.email,
+          phone: snapshot.customer.phone,
+          company: snapshot.customer.company,
+          deliveryAddress: snapshot.customer.deliveryAddress,
+          regNumber: snapshot.customer.regNumber,
+          createdBy: me.email,
+          assignedTo: me.email,
+          locale: "en",
+          packageId: "",
+          robotId: "",
+          optionIds: "[]",
+          snapshot: JSON.stringify(snapshot),
+          subtotal: snapshot.subtotal,
+          discount: 0,
+          total: snapshot.total,
+          currency: snapshot.currency,
+          emailStatus: "pending",
+        },
+      });
+      break;
+    } catch (e: any) {
+      if (e?.code === "P2002" && attempt < 5) {
+        offerNumber = await nextOfferNumber(prefix);
+        snapshot.offerNumber = offerNumber;
+        continue;
+      }
+      throw e;
+    }
+  }
+
+  await logEvent(lead.id, "created", `Product/service lead created — ${lines.length} item(s). Total ${snapshot.total} ${snapshot.currency}.`, me.email);
+  revalidatePath("/admin");
+  redirect(`/admin/leads/${lead.id}?ok=created`);
 }
 
 /** Remove a lead attachment (document or software backup). Same access rules as the lead. */

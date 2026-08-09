@@ -77,6 +77,9 @@ export default async function LeadDetailPage({
   let snap: any = {};
   try { snap = JSON.parse(lead.snapshot); } catch {}
   const options: any[] = snap?.options || [];
+  // A free-form "Product / Service" lead has no milling pack — the offer configurator
+  // ("Modify offer") doesn't apply to it.
+  const isProductLead = !snap?.package;
   const hasDiscount = snap?.discount && snap.discount.amount > 0;
   const templates = await listTemplatesSafe();
   const notifyTemplates = await listNotifyTemplatesMerged();
@@ -159,7 +162,7 @@ export default async function LeadDetailPage({
               prompt={resendPrompts[notify]}
             />
           )}
-          {canModify && (
+          {canModify && !isProductLead && (
             <Link href={`/admin/leads/${lead.id}/edit`} className="btn-primary !px-3 !py-1.5 text-sm">Modify offer →</Link>
           )}
         </div>
@@ -208,7 +211,7 @@ export default async function LeadDetailPage({
           <div className="card p-5">
             <h2 className="mb-3 font-bold">Configuration</h2>
             <div className="divide-y divide-white/5 text-sm">
-              <Row label={`Milling pack — ${snap?.package?.name || "—"}`} sub={`${snap?.package?.spindle || ""} ${snap?.package?.toolHolder ? "· " + snap.package.toolHolder : ""}`} price={money(snap?.package?.price || 0, lead.currency)} />
+              {snap?.package && <Row label={`Milling pack — ${snap.package.name}`} sub={`${snap.package.spindle || ""} ${snap.package.toolHolder ? "· " + snap.package.toolHolder : ""}`} price={money(snap.package.price || 0, lead.currency)} />}
               {snap?.robot && <Row label={`Robot — ${snap.robot.label}`} sub={snap.robot.specs} price={money(snap.robot.price, lead.currency)} />}
               {options.map((o, i) => <Row key={i} label={o.label} sub={o.sub} price={money(o.price, lead.currency)} />)}
             </div>

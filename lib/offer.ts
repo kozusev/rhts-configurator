@@ -12,7 +12,7 @@ export type OfferSnapshot = {
   locale: Locale;
   currency: string;
   customer: { firstName: string; lastName: string; email: string; phone: string; company: string; note: string; deliveryAddress: string; regNumber: string };
-  package: { name: string; price: number; spindle: string; toolHolder: string; image?: string; description?: string };
+  package: { name: string; price: number; spindle: string; toolHolder: string; image?: string; description?: string } | null;
   robot: { label: string; price: number; specs: string; image?: string } | null;
   options: OfferLineItem[];
   subtotal: number; // sum of pack + robot + options, before discount
@@ -102,6 +102,63 @@ export async function buildOfferSnapshot(input: OfferInput, offerNumber: string)
     subtotal,
     discount: null,
     total,
+    company: settings,
+    vatNote: t(settings.vat_note, locale),
+  };
+}
+
+export type ProductLine = { name: string; description?: string; qty: number; unitPrice: number };
+
+export type ProductLeadInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  company?: string;
+  note?: string;
+  deliveryAddress?: string;
+  regNumber?: string;
+  currency?: string;
+  lines: ProductLine[];
+};
+
+/**
+ * Build an offer snapshot for a free-form "Product / Service" lead: no milling pack or
+ * robot, just custom line items. Reuses the same OfferSnapshot shape so the PDF, emails
+ * and lead page render it through their existing line-item paths.
+ */
+export async function buildProductSnapshot(input: ProductLeadInput, offerNumber: string): Promise<OfferSnapshot> {
+  const settings = await getSettings();
+  const locale: Locale = "en";
+  const currency = input.currency || "EUR";
+
+  const options: OfferLineItem[] = input.lines.map((l) => {
+    const qty = Math.max(1, Math.round(l.qty || 1));
+    return { label: l.name, sub: l.description || "", qty, unitPrice: l.unitPrice, price: l.unitPrice * qty };
+  });
+  const subtotal = options.reduce((s, o) => s + o.price, 0);
+
+  return {
+    offerNumber,
+    date: new Date().toISOString(),
+    locale,
+    currency,
+    customer: {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      phone: input.phone,
+      company: input.company || "",
+      note: input.note || "",
+      deliveryAddress: input.deliveryAddress || "",
+      regNumber: input.regNumber || "",
+    },
+    package: null, // product/service leads have no milling pack
+    robot: null,
+    options,
+    subtotal,
+    discount: null,
+    total: subtotal,
     company: settings,
     vatNote: t(settings.vat_note, locale),
   };
