@@ -63,6 +63,17 @@ async function logEvent(leadId: string, type: string, message: string, author: s
   await prisma.leadEvent.create({ data: { leadId, type, message, author } });
 }
 
+/** Remove a lead attachment (document or software backup). Same access rules as the lead. */
+export async function deleteLeadAttachment(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const att = await prisma.leadAttachment.findUnique({ where: { id }, select: { id: true, leadId: true, kind: true, name: true } });
+  if (!att) redirect("/admin");
+  const { lead, author } = await ownedLead(att.leadId);
+  await prisma.leadAttachment.delete({ where: { id: att.id } });
+  await logEvent(lead.id, "modified", `${att.kind === "backup" ? "Software backup" : "Document"} removed: ${att.name}.`, author);
+  revalidatePath(`/admin/leads/${lead.id}`);
+}
+
 export async function setLeadStatus(formData: FormData) {
   const id = String(formData.get("id") || "");
   const status = String(formData.get("status") || "");

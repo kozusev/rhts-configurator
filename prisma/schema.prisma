@@ -135,6 +135,26 @@ model Lead {
   createdAt   DateTime @default(now())
 
   events      LeadEvent[]
+  attachments LeadAttachment[]
+}
+
+/// A file attached to a lead: a scanned document, or a software/config backup.
+/// `kind` = "document" | "backup". Bytes are stored in the DB (Railway's filesystem is
+/// ephemeral) and served through the authenticated /api/leads/attachments/[id] route.
+model LeadAttachment {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  kind       String   @default("document") // "document" | "backup"
+  name       String   @default("")          // human label
+  filename   String   @default("")          // original file name
+  mime       String   @default("application/octet-stream")
+  size       Int      @default(0)           // bytes
+  data       Bytes
+  uploadedBy String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([leadId, kind])
 }
 
 /// Activity log + notes for a lead. type = note | status | discount | email | created | modified.

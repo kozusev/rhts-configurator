@@ -9,6 +9,7 @@ import DeleteLeadButton from "@/components/DeleteLeadButton";
 import EditCustomerModal from "@/components/EditCustomerModal";
 import ResendOfferModal from "@/components/ResendOfferModal";
 import NotifyCustomerModal from "@/components/NotifyCustomerModal";
+import LeadAttachments from "@/components/LeadAttachments";
 import { listTemplatesSafe, listNotifyTemplatesMerged, statusActionKey } from "@/lib/templates";
 import { getBomTotal } from "@/lib/bom";
 import { setLeadStatus, addLeadNote, applyLeadDiscount, setLeadDeadline, recordPayment } from "../../../lead-actions";
@@ -63,6 +64,15 @@ export default async function LeadDetailPage({
   if (!lead) redirect("/admin");
   // Agents may only open leads they created.
   if (me.role === "AGENT" && lead.createdBy !== me.email) redirect("/admin");
+
+  // Attachments — never select `data` here (would pull the file bytes into the page render).
+  const attachments = await prisma.leadAttachment.findMany({
+    where: { leadId: lead.id },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, kind: true, name: true, filename: true, size: true, uploadedBy: true, createdAt: true },
+  });
+  const documents = attachments.filter((a) => a.kind !== "backup");
+  const backups = attachments.filter((a) => a.kind === "backup");
 
   let snap: any = {};
   try { snap = JSON.parse(lead.snapshot); } catch {}
@@ -216,6 +226,26 @@ export default async function LeadDetailPage({
               </div>
             </div>
           </div>
+
+          {/* Scanned documents */}
+          <LeadAttachments
+            leadId={lead.id}
+            kind="document"
+            title="Documents"
+            description="Scanned documents — signed offers, POs, delivery notes, certificates…"
+            attachments={documents}
+            canEdit={canModify}
+          />
+
+          {/* Software backup */}
+          <LeadAttachments
+            leadId={lead.id}
+            kind="backup"
+            title="Software backup"
+            description="Machine software / robot configuration backups for this order."
+            attachments={backups}
+            canEdit={canModify}
+          />
 
           {/* Activity log */}
           <div className="card p-5">
