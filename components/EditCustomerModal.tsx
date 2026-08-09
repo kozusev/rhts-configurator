@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { updateLeadCustomer } from "@/app/admin/lead-actions";
 
 export type CustomerData = {
@@ -16,6 +17,13 @@ export type CustomerData = {
 
 export default function EditCustomerModal({ leadId, customer }: { leadId: string; customer: CustomerData }) {
   const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+
+  // The save action redirects to ?ok=customer on success (a soft navigation that would
+  // otherwise leave this modal mounted and open). Close it once that lands.
+  useEffect(() => {
+    if (searchParams.get("ok") === "customer") setOpen(false);
+  }, [searchParams]);
 
   return (
     <>
@@ -25,17 +33,17 @@ export default function EditCustomerModal({ leadId, customer }: { leadId: string
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         >
-          <div className="card mt-8 w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="card my-8 w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold">Edit customer</h3>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-xl text-slate-400 hover:text-white">
                 ✕
               </button>
             </div>
-            {/* On submit the server action redirects, which closes this modal and refreshes the page. */}
+            {/* On submit the server action redirects with ?ok=customer; the effect above then closes this modal. */}
             <form action={updateLeadCustomer} className="grid gap-3 sm:grid-cols-2">
               <input type="hidden" name="id" value={leadId} />
               <div><label className="label">First name *</label><input name="firstName" defaultValue={customer.firstName} className="field" /></div>

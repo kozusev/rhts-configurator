@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { notifyLeadStatus } from "@/app/admin/lead-actions";
 
 export type NotifyTemplate = { id: string | null; name: string; action: string; subject: string; body: string };
@@ -25,11 +25,21 @@ export default function NotifyCustomerModal({
   const [open, setOpen] = useState(autoOpen);
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   function close() {
     setOpen(false);
     if (autoOpen) router.replace(pathname);
   }
+
+  // The send action redirects to ?ok=notified on success (a soft navigation that would
+  // otherwise leave this modal mounted and open). Close it once that lands.
+  useEffect(() => {
+    if (searchParams.get("ok") === "notified") {
+      setOpen(false);
+      if (autoOpen) router.replace(pathname);
+    }
+  }, [searchParams, autoOpen, router, pathname]);
 
   const preferred = Math.max(0, templates.findIndex((t) => t.action === preselectAction));
 
@@ -62,10 +72,10 @@ export default function NotifyCustomerModal({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
           onClick={close}
         >
-          <div className="card mt-8 w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="card my-8 w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
             <div className="mb-1 flex items-center justify-between">
               <h3 className="text-lg font-bold">Notify customer</h3>
               <button type="button" onClick={close} aria-label="Close" className="text-xl text-slate-400 hover:text-white">
@@ -79,7 +89,7 @@ export default function NotifyCustomerModal({
               Sends a short update to <b className="text-slate-200">{recipient}</b>. No PDF is attached.
             </p>
 
-            {/* On submit the server action redirects, which closes this modal and refreshes the page. */}
+            {/* On submit the server action redirects with ?ok=notified; the effect above then closes this modal. */}
             <form action={notifyLeadStatus} className="space-y-3">
               <input type="hidden" name="id" value={leadId} />
               <input type="hidden" name="templateName" value={templateName} />

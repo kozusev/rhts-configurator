@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { resendOffer } from "@/app/admin/lead-actions";
 
 export type ResendTemplate = { id: string | null; name: string; action: string; subject: string; body: string };
@@ -30,6 +30,7 @@ export default function ResendOfferModal({
   const [open, setOpen] = useState(autoOpen);
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // When opened automatically from a ?notify= hint, clear the hint on dismiss so it doesn't
   // reopen on refresh. (Sending redirects away on its own.)
@@ -37,6 +38,15 @@ export default function ResendOfferModal({
     setOpen(false);
     if (autoOpen) router.replace(pathname);
   }
+
+  // The send action redirects to ?ok=resent on success (a soft navigation that would
+  // otherwise leave this modal mounted and open). Close it once that lands.
+  useEffect(() => {
+    if (searchParams.get("ok") === "resent") {
+      setOpen(false);
+      if (autoOpen) router.replace(pathname);
+    }
+  }, [searchParams, autoOpen, router, pathname]);
 
   // Offer messages only — exclude the internal admin notice and the order-status templates.
   const choices = templates.filter((t) => t.action !== "admin_notify" && !t.action.startsWith("status:"));
@@ -74,10 +84,10 @@ export default function ResendOfferModal({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
           onClick={close}
         >
-          <div className="card mt-8 w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="card my-8 w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
             <div className="mb-1 flex items-center justify-between">
               <h3 className="text-lg font-bold">Resend offer</h3>
               <button type="button" onClick={close} aria-label="Close" className="text-xl text-slate-400 hover:text-white">
@@ -91,7 +101,7 @@ export default function ResendOfferModal({
               The current PDF is regenerated and emailed to <b className="text-slate-200">{recipient}</b>.
             </p>
 
-            {/* On submit the server action redirects, which closes this modal and refreshes the page. */}
+            {/* On submit the server action redirects with ?ok=resent; the effect above then closes this modal. */}
             <form action={resendOffer} className="space-y-3">
               <input type="hidden" name="id" value={leadId} />
               <input type="hidden" name="templateName" value={templateName} />
