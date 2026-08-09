@@ -243,7 +243,7 @@ export default function Configurator({
                   <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-lg">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={r.image} alt={r.model} className="absolute inset-0 h-full w-full object-cover" />
-                    <div className={`absolute left-2 top-2 chip ${r.condition === "used" ? "bg-amber-500 text-white" : "bg-emerald-500 text-white"}`}>
+                    <div className={`absolute left-2 top-2 rounded-lg px-3 py-1.5 text-sm font-extrabold uppercase tracking-wider text-white shadow-lg ring-1 ring-black/20 ${r.condition === "used" ? "bg-amber-500" : "bg-emerald-500"}`}>
                       {r.condition === "used" ? labels.cond_used : labels.cond_new}
                     </div>
                     {active && <div className="absolute right-2 top-2 chip bg-brand-500 text-white">{labels.selected}</div>}
