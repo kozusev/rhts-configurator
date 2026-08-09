@@ -40,7 +40,8 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
     { label: "New", set: inBucket(["new"]), accent: "text-emerald-300" },
     { label: "Idle", set: inBucket(["contacted", "updated", "discounted"]), accent: "text-yellow-300" },
     { label: "Closed", set: inBucket(["closed"]), accent: "text-amber-300" },
-    { label: "Production", set: inBucket(["production", "ready_for_shipping"]), accent: "text-violet-300" },
+    { label: "Production", set: inBucket(["production"]), accent: "text-violet-300" },
+    { label: "Ready to ship", set: inBucket(["ready_for_shipping"]), accent: "text-orange-300" },
     { label: "Shipped / Delivered", set: inBucket(["shipped", "delivered"]), accent: "text-cyan-300" },
     { label: "Installation", set: inBucket(["installation"]), accent: "text-indigo-300" },
     { label: "Finished", set: inBucket(["finished", "terminated"]), accent: "text-slate-300" },
@@ -73,7 +74,7 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
       </div>
 
       {/* Stat cards — compact: 3 across on mobile, all on one row on desktop */}
-      <div className="grid grid-cols-3 gap-2 lg:grid-cols-9">
+      <div className="grid grid-cols-3 gap-2 lg:grid-cols-10">
         {stats.map((s) => (
           <div key={s.label} className="card p-2 text-center lg:p-2.5">
             <div className="truncate text-[10px] leading-tight text-slate-400 sm:text-[11px]">{s.label}</div>
