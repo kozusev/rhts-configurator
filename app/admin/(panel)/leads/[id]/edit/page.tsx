@@ -58,8 +58,9 @@ export default async function EditOfferPage({ params }: { params: { id: string }
           <Link href={`/admin/leads/${lead.id}`} className="text-sm text-slate-400 hover:text-white">← Back to lead</Link>
           <h1 className="mt-1 text-2xl font-bold">Modify offer <span className="font-mono text-brand-300">{lead.offerNumber}</span></h1>
           <p className="text-sm text-slate-400">
-            Change the milling pack, robot and options, then save. The offer is regenerated and
-            re-sent to the client. Any existing discount is reset — re-apply it on the lead page afterwards.
+            Change the milling pack, robot and options, then save. The offer is regenerated but
+            <b> not</b> sent — use “Resend offer” on the lead page when you’re ready to email the client.
+            Any existing discount is reset — re-apply it on the lead page afterwards.
           </p>
         </div>
       </div>

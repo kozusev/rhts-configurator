@@ -181,9 +181,9 @@ export default function Configurator({
     return (
       <div className="card p-8 text-center">
         <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-emerald-500/20 text-2xl text-emerald-400">✓</div>
-        <h3 className="text-2xl font-bold">{adminMode ? "Offer updated & re-sent" : labels.thanks_title}</h3>
+        <h3 className="text-2xl font-bold">{adminMode ? "Offer updated" : labels.thanks_title}</h3>
         <p className="mx-auto mt-2 max-w-md text-slate-300">
-          {adminMode ? "The revised offer was regenerated and emailed to the client." : labels.thanks_body}
+          {adminMode ? "The offer was regenerated. It was NOT emailed — use “Resend offer” on the lead page when you’re ready to send it to the client." : labels.thanks_body}
         </p>
         <p className="mt-4 text-sm text-slate-400">Offer № <span className="font-mono text-brand-300">{result.offerNumber}</span></p>
         <div className="mt-6 flex items-center justify-center gap-3">
