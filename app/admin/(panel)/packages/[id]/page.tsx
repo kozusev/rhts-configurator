@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { savePackage } from "../../../actions";
 import MultiLangField from "@/components/admin/MultiLangField";
 import ImageUpload from "@/components/admin/ImageUpload";
+import BomEditor from "@/components/admin/BomEditor";
+import { getBomLines } from "@/lib/bom";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,7 @@ export default async function EditPackage({ params }: { params: { id: string } }
   const isNew = params.id === "new";
   const pkg = isNew ? null : await prisma.package.findUnique({ where: { id: params.id } });
   if (!isNew && !pkg) notFound();
+  const bomLines = pkg ? await getBomLines("package", pkg.id) : [];
 
   return (
     <div className="max-w-3xl">
@@ -40,6 +43,21 @@ export default async function EditPackage({ params }: { params: { id: string } }
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="published" defaultChecked={pkg?.published ?? true} /> Published</label>
         <button className="btn-primary">Save pack</button>
       </form>
+
+      {pkg ? (
+        <div className="mt-6">
+          <BomEditor
+            productType="package"
+            productId={pkg.id}
+            returnTo={`/admin/packages/${pkg.id}`}
+            salePrice={pkg.basePrice}
+            currency={pkg.currency}
+            initialLines={bomLines}
+          />
+        </div>
+      ) : (
+        <p className="mt-6 text-sm text-slate-500">Save the pack first to add its bill of materials.</p>
+      )}
     </div>
   );
 }

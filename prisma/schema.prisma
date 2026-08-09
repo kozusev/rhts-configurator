@@ -180,6 +180,24 @@ model Media {
   createdAt DateTime @default(now())
 }
 
+/// A bill-of-materials cost line for a sellable product (pack, robot or option).
+/// Internal only — ADMIN/MANAGER see it on the product edit page to work out cost and
+/// margin; it is NEVER exposed to customers or on the public site. `productType` +
+/// `productId` are a lightweight polymorphic link to the owning Package / Robot / Option.
+model BomLine {
+  id          String   @id @default(cuid())
+  productType String   // "package" | "robot" | "option"
+  productId   String
+  name        String   @default("")
+  qty         Float    @default(1)
+  unitCost    Float    @default(0)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productType, productId])
+}
+
 /// Admin-panel user account. role = "ADMIN" | "MANAGER".
 /// ADMIN can manage users; MANAGER can edit site content but not users.
 model User {

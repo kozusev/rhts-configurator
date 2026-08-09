@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { saveRobot } from "../../../actions";
 import MultiLangField from "@/components/admin/MultiLangField";
 import ImageUpload from "@/components/admin/ImageUpload";
+import BomEditor from "@/components/admin/BomEditor";
+import { getBomLines } from "@/lib/bom";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,7 @@ export default async function EditRobot({ params }: { params: { id: string } }) 
   const isNew = params.id === "new";
   const r = isNew ? null : await prisma.robot.findUnique({ where: { id: params.id } });
   if (!isNew && !r) notFound();
+  const bomLines = r ? await getBomLines("robot", r.id) : [];
 
   return (
     <div className="max-w-3xl">
@@ -51,6 +54,21 @@ export default async function EditRobot({ params }: { params: { id: string } }) 
         </div>
         <button className="btn-primary">Save robot</button>
       </form>
+
+      {r ? (
+        <div className="mt-6">
+          <BomEditor
+            productType="robot"
+            productId={r.id}
+            returnTo={`/admin/robots/${r.id}`}
+            salePrice={r.price}
+            currency={r.currency}
+            initialLines={bomLines}
+          />
+        </div>
+      ) : (
+        <p className="mt-6 text-sm text-slate-500">Save the robot first to add its bill of materials.</p>
+      )}
     </div>
   );
 }

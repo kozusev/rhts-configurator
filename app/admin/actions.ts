@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { isAuthenticated, getSessionUser, canEditContent } from "@/lib/auth";
 import { ml, locales } from "@/lib/i18n";
 import { isValidTemplateAction } from "@/lib/templateMeta";
+import { BOM_PRODUCT_TYPES, type BomProductType } from "@/lib/bom";
 
 function assertAuth() {
   if (!isAuthenticated()) redirect("/admin/login");
@@ -156,6 +157,38 @@ export async function duplicateRobot(fd: FormData) {
     },
   });
   revalidatePath("/admin/robots");
+}
+
+// ---------------- Bill of materials (internal cost lines) ----------------
+/** Replace all BOM lines for a product (pack/robot/option) in one save. Admin/manager only. */
+export async function saveBom(fd: FormData) {
+  await assertContentEditor();
+  const productType = str(fd, "productType");
+  const productId = str(fd, "productId");
+  const returnTo = str(fd, "returnTo", "/admin");
+  if (!BOM_PRODUCT_TYPES.includes(productType as BomProductType) || !productId) return;
+
+  let raw: unknown = [];
+  try { raw = JSON.parse(str(fd, "lines", "[]")); } catch {}
+  const lines = (Array.isArray(raw) ? raw : [])
+    .map((l: any) => ({
+      name: String(l?.name ?? "").trim(),
+      qty: Number.isFinite(+l?.qty) ? +l.qty : 0,
+      unitCost: Number.isFinite(+l?.unitCost) ? +l.unitCost : 0,
+    }))
+    .filter((l) => l.name !== "" || l.qty !== 0 || l.unitCost !== 0); // drop fully-empty rows
+
+  // Replace-all: clear existing lines, then recreate from the submitted set.
+  await prisma.$transaction([
+    prisma.bomLine.deleteMany({ where: { productType, productId } }),
+    ...(lines.length
+      ? [prisma.bomLine.createMany({
+          data: lines.map((l, i) => ({ productType, productId, name: l.name, qty: l.qty, unitCost: l.unitCost, order: i })),
+        })]
+      : []),
+  ]);
+
+  revalidatePath(returnTo);
 }
 
 // ---------------- Option groups ----------------

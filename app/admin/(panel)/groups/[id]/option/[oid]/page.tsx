@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { saveOption } from "../../../../../actions";
 import MultiLangField from "@/components/admin/MultiLangField";
 import ImageUpload from "@/components/admin/ImageUpload";
+import BomEditor from "@/components/admin/BomEditor";
+import { getBomLines } from "@/lib/bom";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,7 @@ export default async function EditOption({ params }: { params: { id: string; oid
   if (!group) notFound();
   const o = isNew ? null : await prisma.option.findUnique({ where: { id: params.oid } });
   if (!isNew && !o) notFound();
+  const bomLines = o ? await getBomLines("option", o.id) : [];
 
   return (
     <div className="max-w-3xl">
@@ -36,6 +39,21 @@ export default async function EditOption({ params }: { params: { id: string; oid
         </div>
         <button className="btn-primary">Save option</button>
       </form>
+
+      {o ? (
+        <div className="mt-6">
+          <BomEditor
+            productType="option"
+            productId={o.id}
+            returnTo={`/admin/groups/${group.id}/option/${o.id}`}
+            salePrice={o.price}
+            currency={o.currency}
+            initialLines={bomLines}
+          />
+        </div>
+      ) : (
+        <p className="mt-6 text-sm text-slate-500">Save the option first to add its bill of materials.</p>
+      )}
     </div>
   );
 }
