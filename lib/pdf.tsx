@@ -12,7 +12,7 @@ const styles = StyleSheet.create({
   page: { padding: 0, fontSize: 10, color: "#1f2937", fontFamily: "Helvetica" },
   body: { paddingHorizontal: 40, paddingTop: 20 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 40, paddingVertical: 18 },
-  logo: { height: 34, objectFit: "contain" },
+  logo: { height: 64, objectFit: "contain" },
   brand: { fontSize: 18, fontFamily: "Helvetica-Bold", color: "#ffffff" },
   brandSub: { fontSize: 9, color: "#cbd5e1", marginTop: 2 },
   offerBox: { textAlign: "right" },

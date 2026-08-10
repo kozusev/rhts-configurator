@@ -43,13 +43,14 @@ export default function InvoiceButton({ leadId, defaultHsCode }: { leadId: strin
               <div>
                 <label className="label">Payment terms</label>
                 <div className="space-y-2">
-                  {PAYMENT_TERMS.map((term, i) => (
+                  {PAYMENT_TERMS.en.map((term, i) => (
                     <label key={i} className="flex items-start gap-2 text-sm">
                       <input type="radio" name="terms" checked={termsIdx === i} onChange={() => setTermsIdx(i)} className="mt-0.5" />
                       <span>{term}</span>
                     </label>
                   ))}
                 </div>
+                <p className="mt-1 text-xs text-slate-500">Rendered on the invoice in the client&apos;s language.</p>
               </div>
             </div>
 

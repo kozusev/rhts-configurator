@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { renderInvoicePdf } from "@/lib/invoicePdf";
-import { PAYMENT_TERMS } from "@/lib/invoiceTerms";
+import { paymentTerm } from "@/lib/invoiceTerms";
 import type { OfferSnapshot } from "@/lib/offer";
 
 export const runtime = "nodejs";
@@ -18,7 +18,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const url = new URL(req.url);
   const hsCode = url.searchParams.get("hs") || undefined;
   const termsIdx = parseInt(url.searchParams.get("terms") || "", 10);
-  const paymentTerms = Number.isInteger(termsIdx) && PAYMENT_TERMS[termsIdx] ? PAYMENT_TERMS[termsIdx] : "";
 
   const lead = await prisma.lead.findUnique({ where: { id: params.id } });
   if (!lead) return new NextResponse("Not found", { status: 404 });
@@ -30,6 +29,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   } catch {
     return new NextResponse("Corrupt offer", { status: 500 });
   }
+
+  // Resolve the chosen payment term in the client's language.
+  const paymentTerms = Number.isInteger(termsIdx) ? paymentTerm(snapshot.locale, termsIdx) : "";
 
   const settings = await getSettings();
   const pdf = await renderInvoicePdf(snapshot, settings, { hsCode, paymentTerms });
