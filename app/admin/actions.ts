@@ -387,6 +387,25 @@ export async function saveSettings(fd: FormData) {
   redirect("/admin/settings");
 }
 
+export async function saveInvoiceSettings(fd: FormData) {
+  const me = await getSessionUser();
+  if (!me) redirect("/admin/login");
+  if (me.role !== "ADMIN") redirect("/admin"); // settings are admin-only
+  // Invoice settings: seller identity, VAT rate, bank details, HS code and terms.
+  const keys = [
+    "inv_seller_company", "inv_seller_tax_id", "inv_seller_address", "inv_seller_phone", "inv_seller_email", "inv_vat_rate",
+    "inv_bank_beneficiary", "inv_bank_iban", "inv_bank_swift", "inv_bank_intermediary_bic",
+    "inv_bank_beneficiary_address", "inv_bank_name", "inv_bank_address",
+    "inv_hs_code", "inv_terms",
+  ];
+  for (const k of keys) {
+    const value = str(fd, k);
+    await prisma.setting.upsert({ where: { key: k }, update: { value }, create: { key: k, value } });
+  }
+  revalidatePath("/admin/settings/invoice");
+  redirect("/admin/settings/invoice");
+}
+
 // ---------------- Message templates ----------------
 async function assertAdmin() {
   const me = await getSessionUser();

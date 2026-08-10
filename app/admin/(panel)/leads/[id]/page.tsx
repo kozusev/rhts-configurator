@@ -10,6 +10,9 @@ import EditCustomerModal from "@/components/EditCustomerModal";
 import ResendOfferModal from "@/components/ResendOfferModal";
 import NotifyCustomerModal from "@/components/NotifyCustomerModal";
 import LeadAttachments from "@/components/LeadAttachments";
+import InvoiceButton from "@/components/InvoiceButton";
+import { getSetting } from "@/lib/settings";
+import { DEFAULT_HS_CODE } from "@/lib/invoiceTerms";
 import { listTemplatesSafe, listNotifyTemplatesMerged, statusActionKey } from "@/lib/templates";
 import { getBomTotal } from "@/lib/bom";
 import { locales, localeNames } from "@/lib/i18n";
@@ -79,6 +82,7 @@ export default async function LeadDetailPage({
 
   // CRM clients for the link selector (small table; load all).
   const clients = await prisma.client.findMany({ orderBy: { company: "asc" }, select: { id: true, company: true } });
+  const invHsCode = await getSetting("inv_hs_code", DEFAULT_HS_CODE);
 
   let snap: any = {};
   try { snap = JSON.parse(lead.snapshot); } catch {}
@@ -163,6 +167,7 @@ export default async function LeadDetailPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <a href={`/api/offer/${lead.offerNumber}/pdf`} target="_blank" rel="noopener noreferrer" className="btn-ghost !px-3 !py-1.5 text-sm">Open PDF</a>
+          {canModify && <InvoiceButton leadId={lead.id} defaultHsCode={invHsCode} />}
           {canModify && (
             <ResendOfferModal
               leadId={lead.id}
