@@ -83,6 +83,11 @@ export default async function LeadDetailPage({
   // CRM clients for the link selector (small table; load all).
   const clients = await prisma.client.findMany({ orderBy: { company: "asc" }, select: { id: true, company: true } });
   const invHsCode = await getSetting("inv_hs_code", DEFAULT_HS_CODE);
+  // Default the invoice's VAT toggle from the linked client's VAT status (with-VAT if none linked).
+  const linkedClient = lead.clientId
+    ? await prisma.client.findUnique({ where: { id: lead.clientId }, select: { hasVat: true } })
+    : null;
+  const defaultInvoiceVat = linkedClient ? linkedClient.hasVat : true;
 
   let snap: any = {};
   try { snap = JSON.parse(lead.snapshot); } catch {}
@@ -167,7 +172,7 @@ export default async function LeadDetailPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <a href={`/api/offer/${lead.offerNumber}/pdf`} target="_blank" rel="noopener noreferrer" className="btn-ghost !px-3 !py-1.5 text-sm">Open PDF</a>
-          {canModify && <InvoiceButton leadId={lead.id} defaultHsCode={invHsCode} />}
+          {canModify && <InvoiceButton leadId={lead.id} defaultHsCode={invHsCode} defaultVat={defaultInvoiceVat} />}
           {canModify && (
             <ResendOfferModal
               leadId={lead.id}

@@ -18,6 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const url = new URL(req.url);
   const hsCode = url.searchParams.get("hs") || undefined;
   const termsIdx = parseInt(url.searchParams.get("terms") || "", 10);
+  const withVat = url.searchParams.get("vat") !== "0"; // default with-VAT unless explicitly 0
 
   const lead = await prisma.lead.findUnique({ where: { id: params.id } });
   if (!lead) return new NextResponse("Not found", { status: 404 });
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const paymentTerms = Number.isInteger(termsIdx) ? paymentTerm(snapshot.locale, termsIdx) : "";
 
   const settings = await getSettings();
-  const pdf = await renderInvoicePdf(snapshot, settings, { hsCode, paymentTerms });
+  const pdf = await renderInvoicePdf(snapshot, settings, { hsCode, paymentTerms, withVat });
   return new NextResponse(pdf as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",

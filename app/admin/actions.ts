@@ -391,12 +391,17 @@ export async function saveInvoiceSettings(fd: FormData) {
   const me = await getSessionUser();
   if (!me) redirect("/admin/login");
   if (me.role !== "ADMIN") redirect("/admin"); // settings are admin-only
-  // Invoice settings: seller identity, VAT rate, bank details, HS code and terms.
+  // Invoice settings: two seller profiles (with-VAT / without-VAT), VAT rate, HS code, terms.
   const keys = [
-    "inv_seller_company", "inv_seller_tax_id", "inv_seller_address", "inv_seller_phone", "inv_seller_email", "inv_vat_rate",
+    "inv_vat_rate", "inv_hs_code", "inv_terms",
+    // With-VAT seller profile
+    "inv_seller_company", "inv_seller_tax_id", "inv_seller_address", "inv_seller_phone", "inv_seller_email",
     "inv_bank_beneficiary", "inv_bank_iban", "inv_bank_swift", "inv_bank_intermediary_bic",
     "inv_bank_beneficiary_address", "inv_bank_name", "inv_bank_address",
-    "inv_hs_code", "inv_terms",
+    // Without-VAT seller profile
+    "inv_novat_seller_company", "inv_novat_seller_tax_id", "inv_novat_seller_address", "inv_novat_seller_phone", "inv_novat_seller_email",
+    "inv_novat_bank_beneficiary", "inv_novat_bank_iban", "inv_novat_bank_swift", "inv_novat_bank_intermediary_bic",
+    "inv_novat_bank_beneficiary_address", "inv_novat_bank_name", "inv_novat_bank_address",
   ];
   for (const k of keys) {
     const value = str(fd, k);

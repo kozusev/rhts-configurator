@@ -4,15 +4,24 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PAYMENT_TERMS, DEFAULT_HS_CODE } from "@/lib/invoiceTerms";
 
-export default function InvoiceButton({ leadId, defaultHsCode }: { leadId: string; defaultHsCode?: string }) {
+export default function InvoiceButton({
+  leadId,
+  defaultHsCode,
+  defaultVat = true,
+}: {
+  leadId: string;
+  defaultHsCode?: string;
+  defaultVat?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [hsCode, setHsCode] = useState(defaultHsCode || DEFAULT_HS_CODE);
   const [termsIdx, setTermsIdx] = useState(0);
+  const [withVat, setWithVat] = useState(defaultVat);
   useEffect(() => setMounted(true), []);
 
   function generate() {
-    const url = `/api/leads/${leadId}/invoice?hs=${encodeURIComponent(hsCode)}&terms=${termsIdx}`;
+    const url = `/api/leads/${leadId}/invoice?hs=${encodeURIComponent(hsCode)}&terms=${termsIdx}&vat=${withVat ? 1 : 0}`;
     window.open(url, "_blank", "noopener,noreferrer");
     setOpen(false);
   }
@@ -35,6 +44,18 @@ export default function InvoiceButton({ leadId, defaultHsCode }: { leadId: strin
             </div>
 
             <div className="space-y-4">
+              <div className="rounded-lg border border-white/10 p-3">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" checked={withVat} onChange={(e) => setWithVat(e.target.checked)} />
+                  Client works with VAT
+                </label>
+                <p className="mt-1 text-xs text-slate-500">
+                  {withVat
+                    ? "Uses the with-VAT seller profile and adds VAT."
+                    : "Uses the without-VAT seller profile and adds no VAT."}
+                </p>
+              </div>
+
               <div>
                 <label className="label">HS code</label>
                 <input value={hsCode} onChange={(e) => setHsCode(e.target.value)} className="field sm:max-w-xs" />

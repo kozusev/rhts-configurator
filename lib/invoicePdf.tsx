@@ -46,11 +46,14 @@ function fmtDate(iso: string) {
   return iso.slice(0, 10);
 }
 
-function InvoiceDoc({ s, g, logo, hsCode, paymentTerms }: { s: OfferSnapshot; g: Record<string, string>; logo: string | null; hsCode: string; paymentTerms: string }) {
-  const rate = parseFloat(g.inv_vat_rate || "21") || 0;
+function InvoiceDoc({ s, g, logo, hsCode, paymentTerms, withVat }: { s: OfferSnapshot; g: Record<string, string>; logo: string | null; hsCode: string; paymentTerms: string; withVat: boolean }) {
+  const rate = withVat ? parseFloat(g.inv_vat_rate || "21") || 0 : 0;
   const net = s.total;
   const vat = net * (rate / 100);
   const gross = net + vat;
+  // Seller/bank settings prefix for the active profile.
+  const P = withVat ? "inv_" : "inv_novat_";
+  const gv = (k: string) => g[`${P}${k}`] || "";
 
   // Line items: pack + robot + options.
   const items: { desc: string; sub?: string; qty: number; unit: number; amt: number }[] = [];
@@ -60,13 +63,13 @@ function InvoiceDoc({ s, g, logo, hsCode, paymentTerms }: { s: OfferSnapshot; g:
 
   const cur = s.currency;
   const bankRows: [string, string][] = [
-    [dl("beneficiary", s.locale), g.inv_bank_beneficiary],
-    [dl("iban", s.locale), g.inv_bank_iban],
-    [dl("swiftBic", s.locale), g.inv_bank_swift],
-    [dl("intermediaryBic", s.locale), g.inv_bank_intermediary_bic],
-    [dl("beneficiaryAddress", s.locale), g.inv_bank_beneficiary_address],
-    [dl("bankName", s.locale), g.inv_bank_name],
-    [dl("bankAddress", s.locale), g.inv_bank_address],
+    [dl("beneficiary", s.locale), gv("bank_beneficiary")],
+    [dl("iban", s.locale), gv("bank_iban")],
+    [dl("swiftBic", s.locale), gv("bank_swift")],
+    [dl("intermediaryBic", s.locale), gv("bank_intermediary_bic")],
+    [dl("beneficiaryAddress", s.locale), gv("bank_beneficiary_address")],
+    [dl("bankName", s.locale), gv("bank_name")],
+    [dl("bankAddress", s.locale), gv("bank_address")],
   ].filter(([, v]) => v) as [string, string][];
 
   return (
@@ -74,7 +77,7 @@ function InvoiceDoc({ s, g, logo, hsCode, paymentTerms }: { s: OfferSnapshot; g:
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View>
-            {logo ? <Image style={styles.logo} src={logo} /> : <Text style={styles.brand}>{g.inv_seller_company || "Invoice"}</Text>}
+            {logo ? <Image style={styles.logo} src={logo} /> : <Text style={styles.brand}>{gv("seller_company") || "Invoice"}</Text>}
           </View>
           <View style={styles.docBox}>
             <Text style={styles.docTitle}>{dl("invoice", s.locale)}</Text>
@@ -89,11 +92,11 @@ function InvoiceDoc({ s, g, logo, hsCode, paymentTerms }: { s: OfferSnapshot; g:
           <View style={styles.twoCol}>
             <View style={styles.col}>
               <Text style={styles.sectionTitle}>{dl("seller", s.locale)}</Text>
-              <Text style={styles.kv}>{g.inv_seller_company || ""}</Text>
-              {g.inv_seller_tax_id ? <Text style={[styles.kv, styles.muted]}>{dl("taxId", s.locale)}: {g.inv_seller_tax_id}</Text> : null}
-              {g.inv_seller_address ? <Text style={[styles.kv, styles.muted]}>{g.inv_seller_address}</Text> : null}
-              {g.inv_seller_phone ? <Text style={[styles.kv, styles.muted]}>{g.inv_seller_phone}</Text> : null}
-              {g.inv_seller_email ? <Text style={[styles.kv, styles.muted]}>{g.inv_seller_email}</Text> : null}
+              <Text style={styles.kv}>{gv("seller_company")}</Text>
+              {gv("seller_tax_id") ? <Text style={[styles.kv, styles.muted]}>{dl("taxId", s.locale)}: {gv("seller_tax_id")}</Text> : null}
+              {gv("seller_address") ? <Text style={[styles.kv, styles.muted]}>{gv("seller_address")}</Text> : null}
+              {gv("seller_phone") ? <Text style={[styles.kv, styles.muted]}>{gv("seller_phone")}</Text> : null}
+              {gv("seller_email") ? <Text style={[styles.kv, styles.muted]}>{gv("seller_email")}</Text> : null}
             </View>
             <View style={styles.col}>
               <Text style={styles.sectionTitle}>{dl("billTo", s.locale)}</Text>
@@ -133,17 +136,21 @@ function InvoiceDoc({ s, g, logo, hsCode, paymentTerms }: { s: OfferSnapshot; g:
                 <Text style={styles.totValue}>− {money(s.discount.amount, cur, s.locale)}</Text>
               </View>
             ) : null}
-            <View style={styles.totRow}>
-              <Text style={styles.totLabel}>{dl("netTotal", s.locale)}</Text>
-              <Text style={styles.totValue}>{money(net, cur, s.locale)}</Text>
-            </View>
-            <View style={styles.totRow}>
-              <Text style={styles.totLabel}>{dl("vat", s.locale)} {rate}%</Text>
-              <Text style={styles.totValue}>{money(vat, cur, s.locale)}</Text>
-            </View>
+            {withVat ? (
+              <>
+                <View style={styles.totRow}>
+                  <Text style={styles.totLabel}>{dl("netTotal", s.locale)}</Text>
+                  <Text style={styles.totValue}>{money(net, cur, s.locale)}</Text>
+                </View>
+                <View style={styles.totRow}>
+                  <Text style={styles.totLabel}>{dl("vat", s.locale)} {rate}%</Text>
+                  <Text style={styles.totValue}>{money(vat, cur, s.locale)}</Text>
+                </View>
+              </>
+            ) : null}
             <View style={styles.grandRow}>
               <Text style={styles.grandLabel}>{dl("totalDue", s.locale)}</Text>
-              <Text style={styles.grandValue}>{money(gross, cur, s.locale)}</Text>
+              <Text style={styles.grandValue}>{money(withVat ? gross : net, cur, s.locale)}</Text>
             </View>
           </View>
 
@@ -172,7 +179,7 @@ function InvoiceDoc({ s, g, logo, hsCode, paymentTerms }: { s: OfferSnapshot; g:
         </View>
 
         <Text style={styles.footer}>
-          {(g.inv_seller_company || "")} {g.inv_seller_tax_id ? `· Tax ID ${g.inv_seller_tax_id}` : ""} {g.inv_seller_email ? `· ${g.inv_seller_email}` : ""}
+          {gv("seller_company")} {gv("seller_tax_id") ? `· ${dl("taxId", s.locale)} ${gv("seller_tax_id")}` : ""} {gv("seller_email") ? `· ${gv("seller_email")}` : ""}
         </Text>
       </Page>
     </Document>
@@ -182,10 +189,11 @@ function InvoiceDoc({ s, g, logo, hsCode, paymentTerms }: { s: OfferSnapshot; g:
 export async function renderInvoicePdf(
   s: OfferSnapshot,
   settings: Record<string, string>,
-  opts?: { hsCode?: string; paymentTerms?: string }
+  opts?: { hsCode?: string; paymentTerms?: string; withVat?: boolean }
 ): Promise<Buffer> {
   const logo = await logoDataUri();
   const hsCode = opts?.hsCode ?? settings.inv_hs_code ?? "";
   const paymentTerms = opts?.paymentTerms ?? "";
-  return renderToBuffer(<InvoiceDoc s={s} g={settings} logo={logo} hsCode={hsCode} paymentTerms={paymentTerms} />);
+  const withVat = opts?.withVat ?? true;
+  return renderToBuffer(<InvoiceDoc s={s} g={settings} logo={logo} hsCode={hsCode} paymentTerms={paymentTerms} withVat={withVat} />);
 }
