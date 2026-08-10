@@ -186,6 +186,51 @@ export async function updateProductLead(formData: FormData) {
   redirect(`/admin/leads/${id}?ok=modified`);
 }
 
+/**
+ * Append extra goods/service lines to an existing lead without touching its configured
+ * milling cell (pack / robot / catalog options). Works for both configured-cell leads and
+ * free-form product leads: the new lines are stored as custom items in `snap.options`,
+ * the subtotal is recomputed (pack + robot + all options) and any discount is preserved.
+ */
+export async function addLeadLines(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const { lead, author } = await ownedLead(id);
+
+  let snap: OfferSnapshot;
+  try {
+    snap = JSON.parse(lead.snapshot);
+  } catch {
+    redirect(`/admin/leads/${id}?error=corrupt`);
+  }
+
+  const newLines = parseProductLines(formData);
+  if (newLines.length === 0) redirect(`/admin/leads/${id}?error=nolines`);
+
+  const added = newLines.map((l) => {
+    const qty = Math.max(1, Math.round(l.qty || 1));
+    return { label: l.name, sub: l.description || "", qty, unitPrice: l.unitPrice, price: round2(l.unitPrice * qty), unitCost: l.unitCost || 0 };
+  });
+
+  snap.options = [...(snap.options || []), ...added];
+  const optionsTotal = snap.options.reduce((s, o) => s + (o.price || 0), 0);
+  const subtotal = round2((snap.package?.price || 0) + (snap.robot?.price || 0) + optionsTotal);
+  const discountAmount = round2(Math.min(lead.discount || 0, subtotal));
+  const total = round2(subtotal - discountAmount);
+
+  snap.subtotal = subtotal;
+  snap.total = total;
+  if (snap.discount) snap.discount = { ...snap.discount, amount: discountAmount };
+
+  await prisma.lead.update({
+    where: { id },
+    data: { snapshot: JSON.stringify(snap), subtotal, total, discount: discountAmount, assignedTo: author },
+  });
+  await logEvent(id, "modified", `${added.length} line item(s) added. New total ${total} ${snap.currency}.`, author);
+  revalidatePath(`/admin/leads/${id}`);
+  revalidatePath("/admin");
+  redirect(`/admin/leads/${id}?ok=lines`);
+}
+
 /** Remove a lead attachment (document or software backup). Same access rules as the lead. */
 export async function deleteLeadAttachment(formData: FormData) {
   const id = String(formData.get("id") || "");

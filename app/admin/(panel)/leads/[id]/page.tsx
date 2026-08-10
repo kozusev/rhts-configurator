@@ -11,6 +11,7 @@ import ResendOfferModal from "@/components/ResendOfferModal";
 import NotifyCustomerModal from "@/components/NotifyCustomerModal";
 import LeadAttachments from "@/components/LeadAttachments";
 import InvoiceButton from "@/components/InvoiceButton";
+import AddLinesModal from "@/components/AddLinesModal";
 import { getSetting } from "@/lib/settings";
 import { DEFAULT_HS_CODE } from "@/lib/invoiceTerms";
 import { listTemplatesSafe, listNotifyTemplatesMerged, statusActionKey } from "@/lib/templates";
@@ -36,6 +37,8 @@ const FLASH: Record<string, string> = {
   payment: "Payment recorded.",
   language: "Communication language updated. The PDF and emails will use it.",
   client: "Client link updated.",
+  lines: "Line items added to the offer.",
+  nolines: "Add at least one item with a name or price.",
   baddate: "Please enter a valid date.",
   badamount: "Please enter a non-zero amount.",
   forbidden: "Only admins can delete leads.",
@@ -139,7 +142,8 @@ export default async function LeadDetailPage({
       cost = options.reduce((s: number, o: any) => s + (Number(o.unitCost) || 0) * (o.qty || 1), 0);
     } else {
       const optionCosts = await Promise.all(
-        options.map((o: any) => (o?.id ? getBomTotal("option", o.id).then((c) => c * (o.qty || 1)) : Promise.resolve(0)))
+        // Catalog options cost from their BOM; extra free-form lines use their per-line unit cost.
+        options.map((o: any) => (o?.id ? getBomTotal("option", o.id).then((c) => c * (o.qty || 1)) : Promise.resolve((Number(o.unitCost) || 0) * (o.qty || 1))))
       );
       const [pkgCost, robotCost] = await Promise.all([
         getBomTotal("package", lead.packageId),
@@ -183,6 +187,7 @@ export default async function LeadDetailPage({
               prompt={resendPrompts[notify]}
             />
           )}
+          {canModify && <AddLinesModal leadId={lead.id} currency={lead.currency || "EUR"} canSeeCost={canManageMoney} />}
           {canModify && !isProductLead && (
             <Link href={`/admin/leads/${lead.id}/edit`} className="btn-primary !px-3 !py-1.5 text-sm">Modify offer →</Link>
           )}
